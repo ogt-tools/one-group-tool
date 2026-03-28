@@ -94,22 +94,42 @@ async function testProxyConnection() {
   els.testBtn.innerHTML = '<i data-feather="loader"></i> Testing...';
   if (window.feather) feather.replace();
 
-  const proxyBase = els.proxyBase.value.trim();
-  const testUrl = `${proxyBase.replace(/\/$/, '')}/data/index.json`;
+  const proxyBase = els.proxyBase.value.trim().replace(/\/+$/, '');
+  const candidates = [];
+
+  // Normal expected bases:
+  // - https://raw.githubusercontent.com/<user>/<repo>/main
+  // - https://<user>.github.io/<repo>
+  candidates.push(`${proxyBase}/data/index.json`);
+
+  // If user entered only https://<user>.github.io, try common repo path
+  if (/^https:\/\/[^/]+\.github\.io$/i.test(proxyBase)) {
+    candidates.push(`${proxyBase}/ogt-data-proxy/data/index.json`);
+  }
   
   els.proxyStatus.innerHTML = '<div class="text-blue">Testing connection...</div>';
 
   try {
     const startTime = Date.now();
-    const response = await fetch(testUrl);
+    let response = null;
+    let data = null;
+    let okUrl = null;
+
+    for (const url of candidates) {
+      response = await fetch(url);
+      if (response.ok) {
+        data = await response.json();
+        okUrl = url;
+        break;
+      }
+    }
     const endTime = Date.now();
     const responseTime = endTime - startTime;
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    if (!response || !response.ok) {
+      const status = response ? `${response.status} ${response.statusText}` : 'No response';
+      throw new Error(`HTTP ${status}`);
     }
-
-    const data = await response.json();
     
     // Validate response structure
     if (!data || typeof data !== 'object') {
@@ -121,6 +141,7 @@ async function testProxyConnection() {
       <div class="text-green">
         <i data-feather="check-circle" style="width:16px;height:16px;margin-right:4px;"></i>
         Connected successfully (${responseTime}ms)
+        <br><small>URL: ${okUrl}</small>
         <br><small>Last updated: ${data.timestamp ? new Date(data.timestamp).toLocaleString() : 'Unknown'}</small>
         <br><small>Realms: ${data.realms ? data.realms.join(', ') : 'Unknown'}</small>
       </div>

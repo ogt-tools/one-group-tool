@@ -4,10 +4,11 @@
  * v1.0.0
  */
 
-import { SimCoApi, SimCoToolsApi, ProxyApi } from '../api.js';
+import { ProxyApi } from '../api.js';
 import { formatMoney, formatPercent, createElement, debounce, slugify } from '../utils.js';
 import { createChart } from '../charts.js';
 import { getRealm } from '../core.js';
+import { RESOURCES_SNAPSHOT } from '../data/resources-static.js';
 
 /* -------------------------------------------------------------------------- */
 /*                                    STATE                                   */
@@ -50,14 +51,13 @@ async function init() {
   state.history = JSON.parse(localStorage.getItem('og_price_history') || '{}');
   
   try {
-    const res = await SimCoApi.getAllResources(realm);
-    const validResources = (Array.isArray(res) ? res : []).filter(r =>
-      r && typeof r === 'object' && typeof r.name === 'string' && Number.isFinite(Number(r.id))
-    );
+    const validResources = (Array.isArray(RESOURCES_SNAPSHOT) ? RESOURCES_SNAPSHOT : []).filter(r =>
+      r && typeof r === 'object' && typeof r.name === 'string' && Number.isFinite(Number(r.id ?? r.kind))
+    ).map(r => ({ ...r, id: Number(r.id ?? r.kind), kind: Number(r.kind ?? r.id) }));
 
     if (!validResources.length) {
-      window.showToast?.('Resource data unavailable. Check API connection.', 'error');
-      els.body.innerHTML = '<tr><td colspan="8" class="text-center text-red p-4">No resource data available. Check API connection.</td></tr>';
+      window.showToast?.('Resource data unavailable.', 'error');
+      els.body.innerHTML = '<tr><td colspan="8" class="text-center text-red p-4">No resource data available.</td></tr>';
       return;
     }
     state.resources = [...validResources].sort((a,b) => a.name.localeCompare(b.name));
@@ -109,11 +109,9 @@ async function loadAllPrices() {
     let priceMap = ProxyApi.buildPriceMap(ticker || []);
     let usedProxy = priceMap.size > 0;
 
-    // FALLBACK: SimCo market-ticker directly
     if (!priceMap.size) {
-      ticker = await SimCoApi.getMarketTicker(realm);
-      priceMap = ProxyApi.buildPriceMap(ticker || []);
       usedProxy = false;
+      window.showToast?.('Proxy market data unavailable. Check proxy settings.', 'error');
     }
 
     // Update proxy status indicator
@@ -125,9 +123,8 @@ async function loadAllPrices() {
       }
     }
 
-    // SimCoTools VWAP for historical average
-    const vwaps = await SimCoToolsApi.getAllVwaps(realm);
-    const vwapMap = SimCoToolsApi.buildVwapMap(vwaps);
+    const vwaps = await ProxyApi.getVwaps(realm);
+    const vwapMap = ProxyApi.buildVwapMap(vwaps || []);
 
     const now = Date.now();
     for (const r of state.resources) {

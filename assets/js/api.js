@@ -323,6 +323,9 @@ export const ProxyApi = {
   getRetailInfo: (realm = 0) =>
     ProxyApi._fetch(`data/retail-info-${normalizeRealm(realm)}.json`, `retail_${normalizeRealm(realm)}`, TTL.RETAIL),
 
+  getVwaps: (realm = 0) =>
+    ProxyApi._fetch(`data/vwaps-${normalizeRealm(realm)}.json`, `vwaps_${normalizeRealm(realm)}`, TTL.STC_VWAP),
+
   getMeta: async () => {
     const index = await ProxyApi._fetch('data/index.json', 'index', 60 * 1000, { unwrap: false });
     if (!index || typeof index !== 'object') return null;
@@ -342,6 +345,20 @@ export const ProxyApi = {
       if (Number.isFinite(kind) && Number.isFinite(price) && price > 0) {
         map.set(kind, price);
       }
+    }
+    return map;
+  },
+
+  buildVwapMap: (vwaps) => {
+    const map = new Map();
+    const rows = toArr(vwaps?.vwaps ?? vwaps);
+    for (const row of rows) {
+      const resourceId = toNum(row?.resourceId ?? row?.kind ?? row?.id, NaN);
+      const quality = toNum(row?.quality ?? 0, 0);
+      const vwap = toNum(row?.vwap ?? row?.price ?? row?.avg ?? 0, 0);
+      if (!Number.isFinite(resourceId) || vwap <= 0) continue;
+      const key = `${resourceId}_${quality}`;
+      if (!map.has(key)) map.set(key, vwap);
     }
     return map;
   },
