@@ -1,486 +1,816 @@
 /**
- * api.js | ONE Group Tools — v1.0.1 Definitive
- *
- * DATA SOURCES (priority order):
- *  1. GitHub Pages Proxy  (ogt-data-proxy) — bulk, cached, no rate limits
- *  2. api.simcotools.com  — prices, VWAP, economy phase, companies
- *  3. simcompanies.com    — resource recipes ONLY (/v2 encyclopedia + /v3 market)
- *
- * CONFIRMED ENDPOINTS (from HAR captures 2026-03-28):
- *  ★ /api/v3/market-ticker/{realm}/          → all resource prices
- *  ★ /api/v3/market/{realm}/{kind}/           → exchange listings for one resource
- *  ★ /api/v2/production-modifiers/{realm}/    → speed modifier events
- *  ★ /api/v2/weather/{realm}/                 → retail speed multiplier
- *  ★ /api/v4/{realm}/resources-retail-info/   → retail demand data
- *  ★ /api/v2/en/encyclopedia/resources/       → resource catalog (wages, transport, etc)
- *  ★ /api/v2/companies/{id}/                  → public company profile
- *
- * EXCHANGE FEE: 4% CONFIRMED (verified from fees field in HAR listing data)
- * ECONOMY PHASE: Use SimCoTools /v1/realms/{realm} — not available via public SimCo API
+ * api.js | ONE Group Tools
+ * Unified API wrapper with proxy-first data loading, cache, retries, and fallbacks.
  */
 
-// ─── Proxy & API Base URLs ────────────────────────────────────────────
-// TODO: Replace {username} with actual GitHub username after creating ogt-data-proxy repo
-const PROXY_BASE = 'https://raw.githubusercontent.com/ogt-tools/ogt-data-proxy/main';
-const PROXY_ENABLED = !PROXY_BASE.includes('{username}'); // false until configured
+const hasWindow = typeof window !== 'undefined';
+const storage = hasWindow ? window.localStorage : null;
 
-const STC   = 'https://api.simcotools.com';   // SimCoTools API
+// Proxy data source (ogt-data-proxy)
+const PROXY_BASE = ((hasWindow && window.OGT_PROXY_BASE) ||
+  'https://raw.githubusercontent.com/ogt-tools/ogt-data-proxy/main')
+  .replace(/\/+$/, '');
+const PROXY_ENABLED = /^https?:\/\//.test(PROXY_BASE) && !PROXY_BASE.includes('{username}');
+
+// API base URLs
+const STC = 'https://api.simcotools.com';
 const SC_V2 = 'https://www.simcompanies.com/api/v2';
 const SC_V3 = 'https://www.simcompanies.com/api/v3';
 const SC_V4 = 'https://www.simcompanies.com/api/v4';
 
-// ─── Cache TTLs ───────────────────────────────────────────────────────
+// Cache TTLs
 const TTL = {
-  TICKER  : 3  * 60 * 1000,   //  3 min  — market prices
-  WEATHER : 10 * 60 * 1000,   // 10 min  — weather/retail speed
-  MODS    : 10 * 60 * 1000,   // 10 min  — production modifiers
-  RETAIL  : 30 * 60 * 1000,   // 30 min  — retail demand history
-  CATALOG : 60 * 60 * 1000,   //  1 hr   — resource catalog
-  RECIPE  : 60 * 60 * 1000,   //  1 hr   — production recipes
-  EXCHANGE: 5  * 60 * 1000,   //  5 min  — per-resource exchange listings
-  STC_VWAP: 30 * 60 * 1000,   // 30 min  — VWAP averages
+  TICKER: 3 * 60 * 1000,
+  WEATHER: 10 * 60 * 1000,
+  MODS: 10 * 60 * 1000,
+  RETAIL: 30 * 60 * 1000,
+  CATALOG: 60 * 60 * 1000,
+  RECIPE: 60 * 60 * 1000,
+  EXCHANGE: 5 * 60 * 1000,
+  STC_VWAP: 30 * 60 * 1000,
+  STC_PRICE: 3 * 60 * 1000,
 };
 
-// ─── Request Throttle (for direct SimCo calls only) ───────────────────────────
-const _th = { last: 0, gap: 600 }; // 600ms between direct SimCo API calls
+const PFX = 'og_c_';
+const THROTTLE = { last: 0, gap: 600 };
 
-async function _throttle(url) {
-  const wait = Math.max(0, _th.gap - (Date.now() - _th.last));
-  if (wait > 0) await new Promise(r => setTimeout(r, wait));
-  _th.last = Date.now();
-  return fetch(url);
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function _fetchJSON(url, useThrottle = true) {
-  for (let i = 0; i < 3; i++) {
+function toNum(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeRealm(realm = 0) {
+  const n = Number(realm);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+function titleCase(text) {
+  if (!text || typeof text !== 'string') return '';
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+function toArr(value) {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.results)) return value.results;
+  if (Array.isArray(value?.data)) return value.data;
+  return [];
+}
+
+function normalizeResource(raw) {
+  const id = toNum(raw?.id ?? raw?.kind ?? raw?.dbLetter ?? raw?.resourceId ?? raw?.resource?.id, NaN);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const name = raw?.name ?? raw?.resourceName ?? raw?.resource?.name ?? `Resource ${id}`;
+  const kind = toNum(raw?.kind ?? id, id);
+
+  return {
+    ...raw,
+    id,
+    kind,
+    name,
+    category: raw?.category ?? raw?.categoryName ?? raw?.type ?? 'Other',
+    transport: toNum(raw?.transport ?? raw?.transportation ?? 0, 0),
+    wages: toNum(raw?.wages ?? raw?.baseSalary ?? 0, 0),
+    producedAnHour: toNum(raw?.producedAnHour ?? raw?.productionPerHour ?? 0, 0),
+  };
+}
+
+function dedupeById(items) {
+  const map = new Map();
+  for (const item of items) {
+    if (!item || !Number.isFinite(item.id)) continue;
+    if (!map.has(item.id)) map.set(item.id, item);
+  }
+  return [...map.values()];
+}
+
+function normalizeResources(payload) {
+  return dedupeById(toArr(payload).map(normalizeResource).filter(Boolean));
+}
+
+function normalizeListings(payload) {
+  return toArr(payload)
+    .map((row) => ({
+      ...row,
+      price: toNum(row?.price ?? row?.ask ?? 0, 0),
+      quality: toNum(row?.quality ?? row?.q ?? 0, 0),
+      quantity: toNum(row?.quantity ?? row?.amount ?? row?.qty ?? 0, 0),
+    }))
+    .filter((row) => row.price > 0)
+    .sort((a, b) => a.price - b.price || b.quality - a.quality);
+}
+
+function normalizePriceEntries(payload) {
+  return toArr(payload)
+    .map((row) => {
+      const resourceId = toNum(row?.resourceId ?? row?.kind ?? row?.resource?.id ?? row?.id, NaN);
+      const quality = toNum(row?.quality ?? row?.q ?? 0, 0);
+      const price = toNum(row?.price ?? row?.averagePrice ?? row?.vwap ?? row?.average ?? 0, 0);
+      if (!Number.isFinite(resourceId) || resourceId <= 0 || price <= 0) return null;
+      return {
+        ...row,
+        resourceId,
+        quality,
+        price,
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeBuilding(raw, idx = 0) {
+  const name = raw?.name ?? raw?.building ?? raw?.displayName;
+  if (!name) return null;
+  const id = toNum(raw?.id ?? raw?.buildingId ?? raw?.kind ?? idx + 1, idx + 1);
+  return {
+    ...raw,
+    id,
+    name,
+    type: raw?.type ?? raw?.category ?? null,
+    category: raw?.category ?? raw?.type ?? null,
+  };
+}
+
+function cacheGet(key) {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(PFX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (Date.now() - toNum(parsed.t, 0) < toNum(parsed.ttl, 0)) return parsed.d;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheStale(key) {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(PFX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.d ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheSet(key, value, ttl) {
+  if (!storage) return;
+  try {
+    storage.setItem(PFX + key, JSON.stringify({ d: value, t: Date.now(), ttl }));
+  } catch {
     try {
-      const res = await (useThrottle ? _throttle(url) : fetch(url));
-      if (res.status === 429) { await new Promise(r => setTimeout(r, (i+1)*1500)); continue; }
-      if (!res.ok) { const e = new Error(`HTTP ${res.status}`); e.status = res.status; throw e; }
-      return await res.json();
-    } catch (err) {
-      if (err.status >= 400 && err.status < 500 && err.status !== 429) throw err;
-      if (i === 2) throw err;
-      await new Promise(r => setTimeout(r, (i+1)*800));
+      const keys = Object.keys(storage).filter((k) => k.startsWith(PFX)).sort();
+      keys.slice(0, Math.ceil(keys.length / 2)).forEach((k) => storage.removeItem(k));
+      storage.setItem(PFX + key, JSON.stringify({ d: value, t: Date.now(), ttl }));
+    } catch {
+      // no-op if storage remains unavailable
     }
   }
 }
 
-// ─── Cache ────────────────────────────────────────────────────────────
-const PFX = 'og_c_';
-
-function cGet(key) {
-  try {
-    const raw = localStorage.getItem(PFX + key);
-    if (!raw) return null;
-    const { d, t, ttl } = JSON.parse(raw);
-    return (Date.now() - t < ttl) ? d : null;
-  } catch { return null; }
-}
-
-function cSet(key, data, ttl) {
-  try {
-    localStorage.setItem(PFX + key, JSON.stringify({ d: data, t: Date.now(), ttl }));
-  } catch {
-    // Storage full — evict oldest half
-    Object.keys(localStorage).filter(k => k.startsWith(PFX))
-      .sort().slice(0, 20).forEach(k => localStorage.removeItem(k));
-    try { localStorage.setItem(PFX + key, JSON.stringify({ d: data, t: Date.now(), ttl })); } catch {}
-  }
-}
-
-function cStale(key) {
-  try { const r = localStorage.getItem(PFX+key); return r ? JSON.parse(r).d : null; } catch { return null; }
-}
-
 export function clearAllCache() {
-  const keys = Object.keys(localStorage).filter(k => k.startsWith(PFX));
-  keys.forEach(k => localStorage.removeItem(k));
-  window.showToast?.(`Cleared ${keys.length} cached entries`, 'success');
+  if (!storage) return 0;
+  const keys = Object.keys(storage).filter((k) => k.startsWith(PFX));
+  keys.forEach((k) => storage.removeItem(k));
+  if (hasWindow) window.showToast?.(`Cleared ${keys.length} cached entries`, 'success');
   return keys.length;
 }
 
 export function getCacheAge(key) {
-  try { return Math.floor((Date.now() - JSON.parse(localStorage.getItem(PFX+key)||'{}').t) / 1000); }
-  catch { return null; }
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(PFX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.t) return null;
+    return Math.floor((Date.now() - parsed.t) / 1000);
+  } catch {
+    return null;
+  }
 }
 
-async function fetch_c(url, key, ttl, opts = {}) {
-  const hit = cGet(key);
+async function throttledFetch(url) {
+  const wait = Math.max(0, THROTTLE.gap - (Date.now() - THROTTLE.last));
+  if (wait > 0) await sleep(wait);
+  THROTTLE.last = Date.now();
+  return fetch(url);
+}
+
+async function fetchJson(url, options = {}) {
+  const useThrottle = options.throttle !== false;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await (useThrottle ? throttledFetch(url) : fetch(url));
+      if (response.status === 429) {
+        await sleep((attempt + 1) * 1500);
+        continue;
+      }
+      if (!response.ok) {
+        const err = new Error(`HTTP ${response.status}`);
+        err.status = response.status;
+        throw err;
+      }
+      return await response.json();
+    } catch (err) {
+      const status = toNum(err?.status, 0);
+      const isFatal4xx = status >= 400 && status < 500 && status !== 429;
+      if (isFatal4xx || attempt === 2) throw err;
+      await sleep((attempt + 1) * 800);
+    }
+  }
+  throw new Error('Request failed');
+}
+
+async function fetchCached(url, key, ttl, options = {}) {
+  const hit = cacheGet(key);
   if (hit !== null) return hit;
+
   try {
-    const data = await _fetchJSON(url, opts.throttle !== false);
-    cSet(key, data, ttl);
+    const data = await fetchJson(url, options);
+    cacheSet(key, data, ttl);
     return data;
   } catch (err) {
-    if (!opts.silent) console.error(`[API] ${url}:`, err.message);
-    const stale = cStale(key);
+    if (!options.silent) console.error(`[API] ${url}:`, err?.message || err);
+
+    const stale = cacheStale(key);
     if (stale !== null) {
-      if (!opts.silent) window.showToast?.('Showing cached data (API unavailable)', 'warning');
+      if (!options.silent && hasWindow) {
+        window.showToast?.('Showing cached data (API unavailable)', 'warning');
+      }
       return stale;
     }
-    if (!opts.silent) window.showToast?.(`Unavailable: ${err.message}`, 'error');
+
+    if (!options.silent && hasWindow) {
+      window.showToast?.(`Unavailable: ${err?.message || 'Network error'}`, 'error');
+    }
     throw err;
   }
 }
 
-function arr(x) {
-  if (Array.isArray(x)) return x;
-  if (x?.results && Array.isArray(x.results)) return x.results;
-  if (x?.data   && Array.isArray(x.data))    return x.data;
-  return [];
+async function fetchFirst(urls, keyBase, ttl, options = {}) {
+  const list = Array.isArray(urls) ? urls : [urls];
+  let lastErr = null;
+
+  for (let i = 0; i < list.length; i += 1) {
+    try {
+      return await fetchCached(list[i], `${keyBase}_${i}`, ttl, options);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  if (lastErr) throw lastErr;
+  return null;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  PROXY API  (GitHub Pages — primary data source, no rate limits)
-// ─────────────────────────────────────────────────────────────────────
-export const ProxyApi = {
+function unwrapProxyPayload(payload) {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data;
+  }
+  return payload;
+}
 
+async function fetchStc(paths, keyBase, ttl, options = {}) {
+  const list = Array.isArray(paths) ? paths : [paths];
+  for (let i = 0; i < list.length; i += 1) {
+    const url = `${STC}${list[i]}`;
+    try {
+      return await fetchCached(url, `${keyBase}_${i}`, ttl, { throttle: false, ...options });
+    } catch {
+      // try next endpoint shape
+    }
+  }
+  return null;
+}
+
+export const ProxyApi = {
   isEnabled: () => PROXY_ENABLED,
 
-  /**
-   * Fetch a proxy data file. Returns null if proxy not configured.
-   */
-  _fetch: async (path, key, ttl) => {
+  _fetch: async (path, key, ttl, options = {}) => {
     if (!PROXY_ENABLED) return null;
     try {
-      return await fetch_c(`${PROXY_BASE}/${path}`, `proxy_${key}`, ttl,
-        { throttle: false, silent: true });
-    } catch { return null; }
+      const data = await fetchCached(`${PROXY_BASE}/${path}`, `proxy_${key}`, ttl, {
+        throttle: false,
+        silent: true,
+      });
+      return options.unwrap === false ? data : unwrapProxyPayload(data);
+    } catch {
+      return null;
+    }
   },
 
-  /**
-   * Market ticker: all resource prices in one file.
-   * Returns [{kind, image, price, is_up, realmId}]
-   * kind = numeric resource ID
-   */
+  // ogt-data-proxy file names: data/<endpoint>-<realm>.json
   getMarketTicker: (realm = 0) =>
-    ProxyApi._fetch(`data/realm-${realm}/market-ticker.json`, `ticker_${realm}`, TTL.TICKER),
+    ProxyApi._fetch(`data/market-ticker-${normalizeRealm(realm)}.json`, `ticker_${normalizeRealm(realm)}`, TTL.TICKER),
 
-  /**
-   * Production modifiers: speed events per resource.
-   * Returns {resourceProductionModifiers: [{id, realm, kind, speedModifier, since, until}]}
-   */
   getProductionModifiers: (realm = 0) =>
-    ProxyApi._fetch(`data/realm-${realm}/production-modifiers.json`, `mods_${realm}`, TTL.MODS),
+    ProxyApi._fetch(`data/production-modifiers-${normalizeRealm(realm)}.json`, `mods_${normalizeRealm(realm)}`, TTL.MODS),
 
-  /**
-   * Weather: retail selling speed multiplier (changes ~every 11 hours).
-   * Returns {id, realm, since, until, sellingSpeedMultiplier}
-   */
   getWeather: (realm = 0) =>
-    ProxyApi._fetch(`data/realm-${realm}/weather.json`, `weather_${realm}`, TTL.WEATHER),
+    ProxyApi._fetch(`data/weather-${normalizeRealm(realm)}.json`, `weather_${normalizeRealm(realm)}`, TTL.WEATHER),
 
-  /**
-   * Retail info: demand, saturation, average prices per resource.
-   * Returns [{quality, dbLetter, averagePrice, saturation, retailData[...]}]
-   * dbLetter = numeric resource kind/ID
-   */
   getRetailInfo: (realm = 0) =>
-    ProxyApi._fetch(`data/realm-${realm}/retail-info.json`, `retail_${realm}`, TTL.RETAIL),
+    ProxyApi._fetch(`data/retail-info-${normalizeRealm(realm)}.json`, `retail_${normalizeRealm(realm)}`, TTL.RETAIL),
 
-  /**
-   * Proxy meta: when data was last fetched.
-   * Returns {lastUpdated, proxyCacheTTL}
-   */
-  getMeta: () => ProxyApi._fetch('meta.json', 'meta', 60 * 1000),
+  getMeta: async () => {
+    const index = await ProxyApi._fetch('data/index.json', 'index', 60 * 1000, { unwrap: false });
+    if (!index || typeof index !== 'object') return null;
+    return {
+      lastUpdated: index.timestamp ?? null,
+      realms: toArr(index.realms),
+      endpoints: toArr(index.endpoints),
+      files: toArr(index.files),
+    };
+  },
 
-  /**
-   * Build a price map from market ticker response.
-   * Returns Map<number, number>: kind → price
-   */
   buildPriceMap: (ticker) => {
     const map = new Map();
-    for (const item of (ticker || [])) {
-      if (item.kind != null && item.price != null) {
-        map.set(Number(item.kind), Number(item.price));
+    for (const item of toArr(ticker)) {
+      const kind = toNum(item?.kind ?? item?.id, NaN);
+      const price = toNum(item?.price, NaN);
+      if (Number.isFinite(kind) && Number.isFinite(price) && price > 0) {
+        map.set(kind, price);
       }
     }
     return map;
   },
 
-  /**
-   * Build a speed modifier map from production-modifiers response.
-   * Returns Map<number, number>: kind → speedModifier (percentage integer)
-   * Only includes currently active modifiers.
-   */
   buildModifierMap: (modifiers) => {
     const map = new Map();
     const now = Date.now();
-    const mods = modifiers?.resourceProductionModifiers || [];
-    for (const m of mods) {
-      if (new Date(m.since) <= now && new Date(m.until) >= now) {
-        map.set(Number(m.kind), m.speedModifier);
-      }
+    const rows = toArr(modifiers?.resourceProductionModifiers ?? modifiers?.modifiers ?? modifiers);
+    for (const row of rows) {
+      const kind = toNum(row?.kind ?? row?.resourceId, NaN);
+      const speedModifier = toNum(row?.speedModifier, NaN);
+      const since = row?.since ? Date.parse(row.since) : NaN;
+      const until = row?.until ? Date.parse(row.until) : NaN;
+      if (!Number.isFinite(kind) || !Number.isFinite(speedModifier)) continue;
+      const inWindow =
+        (!Number.isFinite(since) || since <= now) &&
+        (!Number.isFinite(until) || until >= now);
+      if (inWindow) map.set(kind, speedModifier);
     }
     return map;
   },
 
-  /**
-   * Build retail demand map from retail-info.
-   * Returns Map<number, {demand, saturation, averagePrice}>: kind → retail data
-   */
   buildRetailMap: (retailInfo) => {
     const map = new Map();
-    for (const item of (retailInfo || [])) {
-      if (item.dbLetter != null) {
-        // Get latest demand from retailData array (last entry)
-        const latest = item.retailData?.[item.retailData.length - 1];
-        map.set(Number(item.dbLetter), {
-          demand: latest?.demand ?? 0,
-          saturation: item.saturation ?? 1,
-          averagePrice: item.averagePrice ?? 0
-        });
-      }
+    for (const item of toArr(retailInfo)) {
+      const kind = toNum(item?.dbLetter ?? item?.kind ?? item?.resource?.id, NaN);
+      if (!Number.isFinite(kind)) continue;
+      const retailData = toArr(item?.retailData);
+      const latest = retailData.length ? retailData[retailData.length - 1] : null;
+      map.set(kind, {
+        demand: toNum(latest?.demand ?? item?.demand, 0),
+        saturation: toNum(item?.saturation ?? latest?.saturation ?? 1, 1),
+        averagePrice: toNum(item?.averagePrice ?? latest?.averagePrice ?? 0, 0),
+      });
     }
     return map;
-  }
+  },
 };
 
-// ─────────────────────────────────────────────────────────────────────
-//  SimCoTools API  (api.simcotools.com — economy phase, VWAP, companies)
-// ─────────────────────────────────────────────────────────────────────
 export const SimCoToolsApi = {
-
-  /**
-   * Economy phase from SimCoTools (most reliable public source).
-   * Returns "Normal" | "Recession" | "Boom" | null
-   */
   getEconomyPhase: async (realm = 0) => {
-    try {
-      const data = await fetch_c(
-        `${STC}/v1/realms/${realm}`,
-        `stc_realm_${realm}`,
-        TTL.TICKER,
-        { throttle: false, silent: true }
-      );
-      const raw = data?.summary?.phase || data?.phase;
-      if (!raw) return null;
-      return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-    } catch { return null; }
+    const r = normalizeRealm(realm);
+    const data = await fetchStc(
+      [`/v1/realms/${r}`, `/v1/realms/${r}/summary`],
+      `stc_realm_${r}`,
+      TTL.TICKER,
+      { silent: true }
+    );
+    const phase = data?.summary?.phase ?? data?.phase ?? data?.economyPhase ?? null;
+    return phase ? titleCase(String(phase)) : null;
   },
 
-  /**
-   * Economy phase history.
-   * Returns [{phase, start, end}]
-   */
   getPhaseHistory: async (realm = 0) => {
-    try {
-      const data = await fetch_c(
-        `${STC}/v1/realms/${realm}/phases`,
-        `stc_phases_${realm}`,
-        TTL.CATALOG,
-        { throttle: false }
-      );
-      return arr(data?.phases || data);
-    } catch { return []; }
+    const r = normalizeRealm(realm);
+    const data = await fetchStc(
+      [`/v1/realms/${r}/phases`, `/v1/realms/${r}/economy/phases`],
+      `stc_phases_${r}`,
+      TTL.CATALOG,
+      { silent: true }
+    );
+    return toArr(data?.phases ?? data).map((row) => ({
+      ...row,
+      phase: titleCase(String(row?.phase ?? row?.name ?? 'Normal')),
+      start: row?.start ?? row?.since ?? null,
+      end: row?.end ?? row?.until ?? null,
+    }));
   },
 
-  /**
-   * Bulk VWAP — 7-day volume-weighted average prices.
-   * Returns [{datetime, resourceId, quality, vwap}]
-   */
   getAllVwaps: async (realm = 0) => {
-    try {
-      const data = await fetch_c(
-        `${STC}/v1/realms/${realm}/market/vwaps`,
-        `stc_vwaps_${realm}`,
-        TTL.STC_VWAP,
-        { throttle: false }
-      );
-      return arr(data?.vwaps || data);
-    } catch { return []; }
+    const r = normalizeRealm(realm);
+    const data = await fetchStc(
+      [`/v1/realms/${r}/market/vwaps`, `/v1/realms/${r}/vwaps`],
+      `stc_vwaps_${r}`,
+      TTL.STC_VWAP,
+      { silent: true }
+    );
+    return normalizePriceEntries(data?.vwaps ?? data).map((row) => ({
+      ...row,
+      vwap: row.price,
+    }));
   },
 
-  /**
-   * Build VWAP map: Map<`${resourceId}_${quality}`, vwap>
-   */
   buildVwapMap: (vwaps) => {
     const map = new Map();
-    for (const v of vwaps) {
-      const key = `${v.resourceId}_${v.quality}`;
-      if (!map.has(key)) map.set(key, v.vwap); // first = most recent
+    for (const row of normalizePriceEntries(vwaps)) {
+      const key = `${row.resourceId}_${row.quality}`;
+      if (!map.has(key)) map.set(key, row.price);
     }
     return map;
   },
 
-  /**
-   * Company profile via SimCoTools.
-   * Returns null on failure.
-   */
-  getCompany: async (companyId, realm = 0) => {
-    try {
-      const data = await fetch_c(
-        `${STC}/v1/realms/${realm}/companies/${companyId}`,
-        `stc_co_${companyId}_${realm}`,
-        5 * 60 * 1000,
-        { throttle: false, silent: true }
-      );
-      return data || null;
-    } catch { return null; }
+  getAllPrices: async (realm = 0) => {
+    const r = normalizeRealm(realm);
+
+    const stc = await fetchStc(
+      [`/v1/realms/${r}/market/prices`, `/v1/realms/${r}/prices`],
+      `stc_prices_${r}`,
+      TTL.STC_PRICE,
+      { silent: true }
+    );
+    const stcPrices = normalizePriceEntries(stc?.prices ?? stc);
+    if (stcPrices.length) return stcPrices;
+
+    const ticker = await ProxyApi.getMarketTicker(r);
+    const proxyRows = toArr(ticker).map((row) => ({
+      resourceId: toNum(row?.kind ?? row?.id, 0),
+      quality: 0,
+      price: toNum(row?.price, 0),
+    })).filter((row) => row.resourceId > 0 && row.price > 0);
+    if (proxyRows.length) return proxyRows;
+
+    const directTicker = await SimCoApi.getMarketTicker(r);
+    return toArr(directTicker).map((row) => ({
+      resourceId: toNum(row?.kind ?? row?.id, 0),
+      quality: 0,
+      price: toNum(row?.price, 0),
+    })).filter((row) => row.resourceId > 0 && row.price > 0);
   },
 
-  /**
-   * Executive directory (filterable).
-   */
+  buildPriceMap: (prices) => {
+    const map = new Map();
+    for (const row of normalizePriceEntries(prices)) {
+      const key = `${row.resourceId}_${row.quality}`;
+      const prev = map.get(key);
+      if (prev == null || row.price < prev) map.set(key, row.price);
+    }
+    return map;
+  },
+
+  getBestPrice: (priceMap, resourceId, minQ = 0) => {
+    if (!(priceMap instanceof Map)) return 0;
+    const rid = toNum(resourceId, NaN);
+    if (!Number.isFinite(rid)) return 0;
+    const threshold = toNum(minQ, 0);
+
+    let best = Infinity;
+    for (const [key, price] of priceMap.entries()) {
+      const [kRid, q] = String(key).split('_').map((n) => toNum(n, NaN));
+      if (kRid !== rid || !Number.isFinite(q) || q < threshold) continue;
+      if (Number.isFinite(price) && price > 0) best = Math.min(best, price);
+    }
+    return Number.isFinite(best) ? best : 0;
+  },
+
+  getResourcePrices: async (resourceId, realm = 0) => {
+    const rid = toNum(resourceId, NaN);
+    if (!Number.isFinite(rid)) return [];
+    const r = normalizeRealm(realm);
+
+    const stc = await fetchStc(
+      [
+        `/v1/realms/${r}/resources/${rid}/prices`,
+        `/v1/realms/${r}/market/resources/${rid}/prices`,
+      ],
+      `stc_resource_prices_${rid}_${r}`,
+      TTL.STC_PRICE,
+      { silent: true }
+    );
+    const direct = normalizePriceEntries(stc?.prices ?? stc).filter((row) => row.resourceId === rid);
+    if (direct.length) return direct;
+
+    const all = await SimCoToolsApi.getAllPrices(r);
+    return normalizePriceEntries(all).filter((row) => row.resourceId === rid);
+  },
+
+  getQ0Average: (payload) => {
+    const rows = normalizePriceEntries(payload?.prices ?? payload);
+    const q0 = rows.find((row) => row.quality === 0);
+    if (q0) return q0.price;
+    return toNum(payload?.q0 ?? payload?.average ?? payload?.avg, 0);
+  },
+
+  getCompany: async (companyId, realm = 0) => {
+    const id = toNum(companyId, NaN);
+    if (!Number.isFinite(id)) return null;
+    const r = normalizeRealm(realm);
+    const data = await fetchStc(
+      [`/v1/realms/${r}/companies/${id}`, `/v1/companies/${id}`],
+      `stc_company_${id}_${r}`,
+      5 * 60 * 1000,
+      { silent: true }
+    );
+    return data || null;
+  },
+
   getExecutives: async (realm = 0, filters = {}) => {
+    const r = normalizeRealm(realm);
+    const qs = new URLSearchParams(filters).toString();
+    const path = `/v1/realms/${r}/executives${qs ? `?${qs}` : ''}`;
+    const data = await fetchStc(path, `stc_execs_${r}_${qs}`, TTL.CATALOG, { silent: true });
+    return toArr(data?.executives ?? data);
+  },
+
+  getResources: async (realm = 0) => {
+    const r = normalizeRealm(realm);
+    const data = await fetchStc(
+      [`/v1/realms/${r}/resources`, '/v1/resources'],
+      `stc_resources_${r}`,
+      TTL.CATALOG,
+      { silent: true }
+    );
+    const normalized = normalizeResources(data?.resources ?? data);
+    if (normalized.length) return normalized;
+
     try {
-      const qs = new URLSearchParams(filters).toString();
-      const url = `${STC}/v1/realms/${realm}/executives${qs ? '?' + qs : ''}`;
-      const data = await fetch_c(url, `stc_execs_${realm}_${qs}`, TTL.CATALOG, { throttle: false });
-      return arr(data?.executives || data);
-    } catch { return []; }
-  }
+      const mod = await import('./data/resources-static.js');
+      return normalizeResources(mod?.RESOURCES_SNAPSHOT ?? []);
+    } catch {
+      return [];
+    }
+  },
+
+  getBuildings: async (realm = 0, type = '') => {
+    const r = normalizeRealm(realm);
+    const data = await fetchStc(
+      [`/v1/realms/${r}/buildings`, '/v1/buildings'],
+      `stc_buildings_${r}`,
+      TTL.CATALOG,
+      { silent: true }
+    );
+    let rows = toArr(data?.buildings ?? data).map(normalizeBuilding).filter(Boolean);
+
+    if (!rows.length) {
+      try {
+        const mod = await import('./data/buildings.js');
+        rows = Object.keys(mod?.BUILDING_PRODUCTS ?? {}).map((name, idx) =>
+          normalizeBuilding({ id: idx + 1, name, type: 'production' }, idx)
+        ).filter(Boolean);
+      } catch {
+        rows = [];
+      }
+    }
+
+    if (!type) return rows;
+    const t = String(type).toLowerCase();
+    return rows.filter((row) =>
+      String(row?.type ?? '').toLowerCase().includes(t) ||
+      String(row?.category ?? '').toLowerCase().includes(t)
+    );
+  },
 };
 
-// ─────────────────────────────────────────────────────────────────────
-//  SimCompanies API  (for catalog and recipes — secondary)
-// ─────────────────────────────────────────────────────────────────────
 export const SimCoApi = {
-
-  /**
-   * Market ticker (direct SimCompanies call).
-   * CONFIRMED endpoint: /api/v3/market-ticker/{realm}/
-   * Returns Array<{kind:number, price:number, image?:string, is_up?:boolean, realmId?:number}>
-   */
   getMarketTicker: async (realm = 0) => {
+    const r = normalizeRealm(realm);
     try {
-      const data = await fetch_c(
-        `${SC_V3}/market-ticker/${realm}/`,
-        `sc_ticker_${realm}`,
+      const data = await fetchFirst(
+        [`${SC_V3}/market-ticker/${r}/`, `${SC_V2}/market-ticker/${r}/`],
+        `sc_ticker_${r}`,
         TTL.TICKER
       );
       return toArr(data);
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   },
 
-  /**
-   * All resources list — basic info (id, name, transport, producedAnHour, wages)
-   * Uses SimCo v2 encyclopedia. Falls back to SimCoTools resource list.
-   * ALWAYS returns an Array — never throws or returns non-array.
-   */
   getAllResources: async (realm = 0) => {
-    // Try SimCo v2 first (has wages, transport, producedAnHour)
+    const r = normalizeRealm(realm);
     try {
-      const data = await fetch_c(
-        `${SC_V2}/en/encyclopedia/resources/`,
-        `sc_resources_${realm}`,
-        TTL.CATALOG,
-        true
+      const data = await fetchFirst(
+        [`${SC_V2}/en/encyclopedia/resources/`, `${SC_V3}/en/encyclopedia/resources/`],
+        `sc_resources_${r}`,
+        TTL.CATALOG
       );
-      const list = toArr(data);
-      if (list.length > 0 && list[0].id !== undefined) return list;
-    } catch {}
-
-    // Fallback: SimCoTools resource list (less fields but reliable)
-    try {
-      const list = await SimCoToolsApi.getResources(realm);
-      if (list.length > 0) return list;
-    } catch {}
-
-    // Last resort: stale cache
-    const stale = cStale(`sc_resources_${realm}`);
-    if (stale) {
-      window.showToast?.('Using cached resource list (API unavailable)', 'warning');
-      return toArr(stale);
+      const rows = normalizeResources(data);
+      if (rows.length) return rows;
+    } catch {
+      // continue to fallbacks
     }
 
-    // Final fallback: static snapshot
     try {
-      const { RESOURCES_SNAPSHOT } = await import('./data/resources-static.js');
-      if (RESOURCES_SNAPSHOT && RESOURCES_SNAPSHOT.length > 0) {
-        window.showToast?.('Using static resource list (API unavailable)', 'warning');
-        return RESOURCES_SNAPSHOT;
-      }
-    } catch {}
+      const stcRows = await SimCoToolsApi.getResources(r);
+      if (stcRows.length) return stcRows;
+    } catch {
+      // continue
+    }
 
-    window.showToast?.('Resource data unavailable. Please check connection.', 'error');
-    return [];
+    const stale = cacheStale(`sc_resources_${r}_0`);
+    const staleRows = normalizeResources(stale);
+    if (staleRows.length) {
+      if (hasWindow) window.showToast?.('Using cached resource list (API unavailable)', 'warning');
+      return staleRows;
+    }
+
+    try {
+      const mod = await import('./data/resources-static.js');
+      const rows = normalizeResources(mod?.RESOURCES_SNAPSHOT ?? []);
+      if (rows.length && hasWindow) {
+        window.showToast?.('Using static resource list (API unavailable)', 'warning');
+      }
+      return rows;
+    } catch {
+      if (hasWindow) window.showToast?.('Resource data unavailable. Please check connection.', 'error');
+      return [];
+    }
   },
 
-  /**
-   * Full resource detail with producedFrom recipe.
-   * CONFIRMED endpoint: /api/v3/en/encyclopedia/resources/{realm}/{id}/
-   * Returns null on failure — callers must handle null.
-   */
   getResource: async (id, realm = 0) => {
-    if (!id || isNaN(Number(id))) {
-      console.error('[SimCoApi.getResource] Invalid ID:', id);
-      return null;
-    }
+    const rid = toNum(id, NaN);
+    const r = normalizeRealm(realm);
+    if (!Number.isFinite(rid)) return null;
+
     try {
-      return await fetch_c(
-        `${SC_V3}/en/encyclopedia/resources/${realm}/${id}/`,
-        `sc_resource_${id}_${realm}`,
+      const data = await fetchFirst(
+        [
+          `${SC_V3}/en/encyclopedia/resources/${r}/${rid}/`,
+          `${SC_V2}/en/encyclopedia/resources/${rid}/`,
+        ],
+        `sc_resource_${rid}_${r}`,
         TTL.RECIPE
       );
-    } catch (err) {
-      console.error(`[SimCoApi.getResource] Failed for id=${id}:`, err.message);
-      
-      // Fallback: try static resources
-      try {
-        const { RESOURCES_SNAPSHOT } = await import('./data/resources-static.js');
-        const resource = RESOURCES_SNAPSHOT.find(r => r.id === parseInt(id) || r.kind === parseInt(id));
-        if (resource) {
-          window.showToast?.('Using static resource data (API unavailable)', 'warning');
-          return resource;
-        }
-      } catch {}
-      
+      const normalized = normalizeResource(data);
+      return normalized || data || null;
+    } catch {
+      // continue to fallback
+    }
+
+    try {
+      const all = await SimCoApi.getAllResources(r);
+      const fallback = all.find((row) => toNum(row?.id, 0) === rid || toNum(row?.kind, 0) === rid);
+      if (fallback && hasWindow) {
+        window.showToast?.('Using cached resource data (API unavailable)', 'warning');
+      }
+      return fallback || null;
+    } catch {
       return null;
     }
   },
 
-  /**
-   * Exchange listings for a resource.
-   * Listings sorted best-first (lowest price, highest quality) by server.
-   * Returns [] on failure.
-   */
   getExchangeListings: async (id, realm = 0) => {
-    if (!id || isNaN(Number(id))) return [];
+    const rid = toNum(id, NaN);
+    const r = normalizeRealm(realm);
+    if (!Number.isFinite(rid)) return [];
+
     try {
-      const data = await fetch_c(
-        `${SC_V3}/en/exchange/${id}/`,
-        `sc_exchange_${id}_${realm}`,
+      const data = await fetchFirst(
+        [
+          `${SC_V3}/market/${r}/${rid}/`,
+          `${SC_V3}/en/exchange/${rid}/`,
+          `${SC_V2}/market/${r}/${rid}/`,
+        ],
+        `sc_exchange_${rid}_${r}`,
         TTL.EXCHANGE
       );
-      return toArr(data);
-    } catch { return []; }
-  },
-
-  /**
-   * Company profile (public).
-   */
-  getCompany: async (id) => {
-    if (!id) return null;
-    try {
-      return await fetch_c(`${SC_V2}/companies/${id}/`, `sc_company_${id}`, 5 * 60 * 1000);
-    } catch { return null; }
-  },
-
-  /**
-   * Cheapest price for a resource at given min quality.
-   * Tries SimCoTools bulk prices first (fast, no extra request).
-   * Falls back to SimCo exchange endpoint.
-   */
-  getBestPrice: async (id, minQ = 0, realm = 0, priceMap = null) => {
-    // If caller passes priceMap from bulk fetch, use it (zero cost)
-    if (priceMap instanceof Map) {
-      return SimCoToolsApi.getBestPrice(priceMap, id, minQ);
+      return normalizeListings(data);
+    } catch {
+      return [];
     }
-    // Otherwise fall back to individual exchange call
-    try {
-      const listings = await SimCoApi.getExchangeListings(id, realm);
-      const filtered = listings.filter(l => (l.quality ?? 0) >= minQ);
-      if (!filtered.length) return 0;
-      filtered.sort((a, b) => a.price - b.price);
-      return filtered[0].price ?? 0;
-    } catch { return 0; }
   },
 
-  // Convenience: build resource name→id map
+  getCompany: async (id) => {
+    const cid = toNum(id, NaN);
+    if (!Number.isFinite(cid)) return null;
+    try {
+      return await fetchCached(`${SC_V2}/companies/${cid}/`, `sc_company_${cid}`, 5 * 60 * 1000);
+    } catch {
+      return SimCoToolsApi.getCompany(cid, 0);
+    }
+  },
+
+  getBestPrice: async (id, minQ = 0, realm = 0, priceMap = null) => {
+    const rid = toNum(id, NaN);
+    const r = normalizeRealm(realm);
+    if (!Number.isFinite(rid)) return 0;
+
+    if (priceMap instanceof Map) {
+      return SimCoToolsApi.getBestPrice(priceMap, rid, minQ);
+    }
+
+    if (toNum(minQ, 0) <= 0) {
+      const ticker = await ProxyApi.getMarketTicker(r);
+      const proxyMap = ProxyApi.buildPriceMap(ticker || []);
+      const hit = proxyMap.get(rid);
+      if (Number.isFinite(hit) && hit > 0) return hit;
+    }
+
+    const listings = await SimCoApi.getExchangeListings(rid, r);
+    const filtered = listings.filter((row) => toNum(row?.quality, 0) >= toNum(minQ, 0));
+    if (!filtered.length) return 0;
+    return toNum(filtered[0]?.price, 0);
+  },
+
   buildNameMap: async (realm = 0) => {
-    const all = await SimCoApi.getAllResources(realm);
-    return new Map(all.map(r => [r.name?.toLowerCase(), r.id]));
-  }
+    const rows = await SimCoApi.getAllResources(realm);
+    return new Map(rows.map((row) => [String(row?.name || '').toLowerCase(), row.id]));
+  },
+
+  getBuildings: async (realm = 0) => {
+    const r = normalizeRealm(realm);
+    const stcRows = await SimCoToolsApi.getBuildings(r);
+    if (stcRows.length) return stcRows;
+
+    try {
+      const data = await fetchFirst(
+        [
+          `${SC_V3}/en/encyclopedia/buildings/${r}/`,
+          `${SC_V2}/en/encyclopedia/buildings/`,
+        ],
+        `sc_buildings_${r}`,
+        TTL.CATALOG,
+        { silent: true }
+      );
+      const rows = toArr(data).map(normalizeBuilding).filter(Boolean);
+      if (rows.length) return rows;
+    } catch {
+      // continue to static fallback
+    }
+
+    try {
+      const mod = await import('./data/buildings.js');
+      return Object.keys(mod?.BUILDING_PRODUCTS ?? {}).map((name, idx) => ({ id: idx + 1, name }));
+    } catch {
+      return [];
+    }
+  },
+
+  getBuildingDetail: async (id, realm = 0) => {
+    const bid = toNum(id, NaN);
+    const r = normalizeRealm(realm);
+    if (!Number.isFinite(bid)) return {};
+
+    try {
+      const detail = await fetchFirst(
+        [
+          `${SC_V4}/${r}/buildings/${bid}/`,
+          `${SC_V3}/en/encyclopedia/buildings/${r}/${bid}/`,
+          `${SC_V2}/en/encyclopedia/buildings/${bid}/`,
+        ],
+        `sc_building_${bid}_${r}`,
+        TTL.CATALOG,
+        { silent: true }
+      );
+
+      if (!detail || typeof detail !== 'object') return {};
+
+      if (!Array.isArray(detail.upgradeCost)) {
+        const mats = toArr(detail.upgradeMaterials ?? detail.materials ?? detail.costs);
+        if (mats.length) {
+          detail.upgradeCost = mats
+            .map((m) => {
+              const resourceId = toNum(m?.resource?.id ?? m?.resourceId ?? m?.kind ?? m?.id, NaN);
+              const amount = toNum(m?.amount ?? m?.quantity ?? m?.count, 0);
+              if (!Number.isFinite(resourceId) || amount <= 0) return null;
+              return {
+                resource: {
+                  id: resourceId,
+                  name: m?.resource?.name ?? m?.name ?? `Resource ${resourceId}`,
+                },
+                amount,
+              };
+            })
+            .filter(Boolean);
+        }
+      }
+      return detail;
+    } catch {
+      return {};
+    }
+  },
+
+  getServerStatus: async (realm = 0) => {
+    const r = normalizeRealm(realm);
+    const [economy, meta] = await Promise.all([
+      SimCoToolsApi.getEconomyPhase(r),
+      ProxyApi.getMeta(),
+    ]);
+    return {
+      economy: economy || null,
+      realm: r,
+      source: economy ? 'simcotools' : 'unknown',
+      updatedAt: meta?.lastUpdated ?? null,
+    };
+  },
 };
+
