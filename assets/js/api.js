@@ -349,7 +349,7 @@ export const SimCoApi = {
       const data = await fetch_c(
         `${SC_V2}/en/encyclopedia/resources/`,
         `sc_resources_${realm}`,
-        TTL_CATALOG,
+        TTL.CATALOG,
         true
       );
       const list = toArr(data);
@@ -369,6 +369,15 @@ export const SimCoApi = {
       return toArr(stale);
     }
 
+    // Final fallback: static snapshot
+    try {
+      const { RESOURCES_SNAPSHOT } = await import('./data/resources-static.js');
+      if (RESOURCES_SNAPSHOT && RESOURCES_SNAPSHOT.length > 0) {
+        window.showToast?.('Using static resource list (API unavailable)', 'warning');
+        return RESOURCES_SNAPSHOT;
+      }
+    } catch {}
+
     window.showToast?.('Resource data unavailable. Please check connection.', 'error');
     return [];
   },
@@ -387,10 +396,21 @@ export const SimCoApi = {
       return await fetch_c(
         `${SC_V3}/en/encyclopedia/resources/${realm}/${id}/`,
         `sc_resource_${id}_${realm}`,
-        TTL_RECIPE
+        TTL.RECIPE
       );
     } catch (err) {
       console.error(`[SimCoApi.getResource] Failed for id=${id}:`, err.message);
+      
+      // Fallback: try static resources
+      try {
+        const { RESOURCES_SNAPSHOT } = await import('./data/resources-static.js');
+        const resource = RESOURCES_SNAPSHOT.find(r => r.id === parseInt(id) || r.kind === parseInt(id));
+        if (resource) {
+          window.showToast?.('Using static resource data (API unavailable)', 'warning');
+          return resource;
+        }
+      } catch {}
+      
       return null;
     }
   },
@@ -406,7 +426,7 @@ export const SimCoApi = {
       const data = await fetch_c(
         `${SC_V3}/en/exchange/${id}/`,
         `sc_exchange_${id}_${realm}`,
-        TTL_PRICES
+        TTL.EXCHANGE
       );
       return toArr(data);
     } catch { return []; }
