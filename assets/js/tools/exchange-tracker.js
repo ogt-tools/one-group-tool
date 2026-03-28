@@ -51,12 +51,21 @@ async function init() {
   state.history = JSON.parse(localStorage.getItem('og_price_history') || '{}');
   
   try {
-    const validResources = (Array.isArray(RESOURCES_SNAPSHOT) ? RESOURCES_SNAPSHOT : []).filter(r =>
+    // TRY PROXY RESOURCES FIRST (server-side fetched, no CORS)
+    let resources = await ProxyApi.getResources(realm);
+    let validResources = (Array.isArray(resources) ? resources : []).filter(r =>
       r && typeof r === 'object' && typeof r.name === 'string' && Number.isFinite(Number(r.id ?? r.kind))
     ).map(r => ({ ...r, id: Number(r.id ?? r.kind), kind: Number(r.kind ?? r.id) }));
 
+    // FALLBACK: Static snapshot if proxy fails
     if (!validResources.length) {
-      window.showToast?.('Resource data unavailable.', 'error');
+      validResources = (Array.isArray(RESOURCES_SNAPSHOT) ? RESOURCES_SNAPSHOT : []).filter(r =>
+        r && typeof r === 'object' && typeof r.name === 'string' && Number.isFinite(Number(r.id ?? r.kind))
+      ).map(r => ({ ...r, id: Number(r.id ?? r.kind), kind: Number(r.kind ?? r.id) }));
+    }
+
+    if (!validResources.length) {
+      window.showToast?.('Resource data unavailable. Check proxy settings.', 'error');
       els.body.innerHTML = '<tr><td colspan="8" class="text-center text-red p-4">No resource data available.</td></tr>';
       return;
     }

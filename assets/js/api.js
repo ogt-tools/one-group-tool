@@ -326,6 +326,9 @@ export const ProxyApi = {
   getVwaps: (realm = 0) =>
     ProxyApi._fetch(`data/vwaps-${normalizeRealm(realm)}.json`, `vwaps_${normalizeRealm(realm)}`, TTL.STC_VWAP),
 
+  getResources: (realm = 0) =>
+    ProxyApi._fetch(`data/resources-${normalizeRealm(realm)}.json`, `resources_${normalizeRealm(realm)}`, TTL.CATALOG),
+
   getMeta: async () => {
     const index = await ProxyApi._fetch('data/index.json', 'index', 60 * 1000, { unwrap: false });
     if (!index || typeof index !== 'object') return null;

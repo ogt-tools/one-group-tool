@@ -92,9 +92,18 @@ async function init() {
   const realm = getRealm();
   
   try {
-    state.allResources = await SimCoApi.getAllResources(realm);
+    // TRY PROXY RESOURCES FIRST (server-side fetched, no CORS)
+    let resources = await ProxyApi.getResources(realm);
+    state.allResources = (Array.isArray(resources) ? resources : []);
+    
+    // FALLBACK: Static snapshot if proxy fails
     if (!state.allResources.length) {
-      window.showToast?.('Resource data unavailable. Check API connection.', 'error');
+      const { RESOURCES_SNAPSHOT } = await import('../data/resources-static.js');
+      state.allResources = Array.isArray(RESOURCES_SNAPSHOT) ? RESOURCES_SNAPSHOT : [];
+    }
+    
+    if (!state.allResources.length) {
+      window.showToast?.('Resource data unavailable. Check proxy settings.', 'error');
       els.list.innerHTML = '<p class="text-red text-center p-4">Resources unavailable.</p>';
       return;
     }

@@ -36,17 +36,26 @@ async function init() {
   const realm = getRealm();
   
   try {
-    const [resources, retailInfo, weather] = await Promise.all([
-      SimCoApi.getAllResources(realm),
+    // TRY PROXY RESOURCES FIRST (server-side fetched, no CORS)
+    let resources = await ProxyApi.getResources(realm);
+    let resourceList = Array.isArray(resources) ? [...resources] : [];
+    
+    // FALLBACK: Static snapshot if proxy fails
+    if (!resourceList.length) {
+      const { RESOURCES_SNAPSHOT } = await import('../data/resources-static.js');
+      resourceList = Array.isArray(RESOURCES_SNAPSHOT) ? [...RESOURCES_SNAPSHOT] : [];
+    }
+    
+    if (!resourceList.length) {
+      window.showToast?.('Resource data unavailable. Check proxy settings.', 'error');
+      return;
+    }
+    
+    const [retailInfo, weather] = await Promise.all([
       ProxyApi.getRetailInfo(realm),
       ProxyApi.getWeather(realm)
     ]);
     
-    const resourceList = Array.isArray(resources) ? [...resources] : [];
-    if (!resourceList.length) {
-      window.showToast?.('Resource data unavailable. Check API connection.', 'error');
-      return;
-    }
     state.allResources = resourceList;
     state.allResources.sort((a,b) => a.name.localeCompare(b.name));
     

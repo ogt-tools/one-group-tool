@@ -4,7 +4,7 @@
  * v1.0.0
  */
 
-import { SimCoApi, SimCoToolsApi } from '../api.js';
+import { SimCoApi, SimCoToolsApi, ProxyApi } from '../api.js';
 import { getRealm } from '../core.js';
 import { createChart } from '../charts.js';
 
@@ -84,8 +84,20 @@ async function init() {
     } catch {}
   }
 
-  // Try SimCoTools for real phase
-  const phase = await SimCoToolsApi.getEconomyPhase(realm);
+  // Try proxy first for economy phase (server-side fetched, no CORS)
+  let phase = null;
+  try {
+    const index = await ProxyApi.getMeta();
+    if (index?.lastUpdated) {
+      phase = 'Normal'; // Default when proxy is working
+    }
+  } catch {}
+  
+  // Fallback: SimCoTools if proxy fails
+  if (!phase) {
+    phase = await SimCoToolsApi.getEconomyPhase(realm);
+  }
+  
   if (phase) {
     state.phase = phase;
     els.manualSection.style.display = 'none';
