@@ -363,7 +363,7 @@ export const SimCoApi = {
     } catch {}
 
     // Last resort: stale cache
-    const stale = cGetStale(`sc_resources_${realm}`);
+    const stale = cStale(`sc_resources_${realm}`);
     if (stale) {
       window.showToast?.('Using cached resource list (API unavailable)', 'warning');
       return toArr(stale);
