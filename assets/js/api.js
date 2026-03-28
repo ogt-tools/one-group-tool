@@ -339,6 +339,22 @@ export const SimCoToolsApi = {
 export const SimCoApi = {
 
   /**
+   * Market ticker (direct SimCompanies call).
+   * CONFIRMED endpoint: /api/v3/market-ticker/{realm}/
+   * Returns Array<{kind:number, price:number, image?:string, is_up?:boolean, realmId?:number}>
+   */
+  getMarketTicker: async (realm = 0) => {
+    try {
+      const data = await fetch_c(
+        `${SC_V3}/market-ticker/${realm}/`,
+        `sc_ticker_${realm}`,
+        TTL.TICKER
+      );
+      return toArr(data);
+    } catch { return []; }
+  },
+
+  /**
    * All resources list — basic info (id, name, transport, producedAnHour, wages)
    * Uses SimCo v2 encyclopedia. Falls back to SimCoTools resource list.
    * ALWAYS returns an Array — never throws or returns non-array.

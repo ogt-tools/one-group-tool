@@ -110,8 +110,7 @@ async function loadAllPrices() {
 
     // FALLBACK: SimCo market-ticker directly
     if (!priceMap.size) {
-      const data = await SimCoApi._fetchDirectTicker(realm);
-      ticker = data;
+      ticker = await SimCoApi.getMarketTicker(realm);
       priceMap = ProxyApi.buildPriceMap(ticker || []);
     }
 
