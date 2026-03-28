@@ -25,14 +25,14 @@ const state = {
 };
 
 const els = {
-  body: document.getElementById('table-body'),
   search: document.getElementById('search-input'),
   cat: document.getElementById('category-filter'),
   q: document.getElementById('quality-filter'),
   refresh: document.getElementById('refresh-btn'),
   compare: document.getElementById('compare-btn'),
-  chartSec: document.getElementById('comparison-section'),
-  updated: document.getElementById('last-updated')
+  updated: document.getElementById('last-updated'),
+  proxyStatus: document.getElementById('proxy-status'),
+  body: document.getElementById('table-body')
 };
 
 // Module-level price and VWAP maps
@@ -107,11 +107,22 @@ async function loadAllPrices() {
     // TRY PROXY FIRST (fastest — no rate limits)
     let ticker = await ProxyApi.getMarketTicker(realm);
     let priceMap = ProxyApi.buildPriceMap(ticker || []);
+    let usedProxy = priceMap.size > 0;
 
     // FALLBACK: SimCo market-ticker directly
     if (!priceMap.size) {
       ticker = await SimCoApi.getMarketTicker(realm);
       priceMap = ProxyApi.buildPriceMap(ticker || []);
+      usedProxy = false;
+    }
+
+    // Update proxy status indicator
+    if (els.proxyStatus) {
+      if (usedProxy && ProxyApi.isEnabled()) {
+        els.proxyStatus.innerHTML = '<i data-feather="wifi" style="width:14px;height:14px;"></i> <span class="text-green">Proxy</span>';
+      } else {
+        els.proxyStatus.innerHTML = '<i data-feather="wifi-off" style="width:14px;height:14px;"></i> <span class="text-orange">Direct API</span>';
+      }
     }
 
     // SimCoTools VWAP for historical average

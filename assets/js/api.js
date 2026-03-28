@@ -6,11 +6,9 @@
 const hasWindow = typeof window !== 'undefined';
 const storage = hasWindow ? window.localStorage : null;
 
-// Proxy data source (ogt-data-proxy)
-const PROXY_BASE = ((hasWindow && window.OGT_PROXY_BASE) ||
-  'https://raw.githubusercontent.com/ogt-tools/ogt-data-proxy/main')
-  .replace(/\/+$/, '');
-const PROXY_ENABLED = /^https?:\/\//.test(PROXY_BASE) && !PROXY_BASE.includes('{username}');
+// Proxy data source (ogt-data-proxy) - will be updated dynamically from settings
+let PROXY_BASE = 'https://raw.githubusercontent.com/ogt-tools/ogt-data-proxy/main';
+let PROXY_ENABLED = true;
 
 // API base URLs
 const STC = 'https://api.simcotools.com';
@@ -291,6 +289,12 @@ async function fetchStc(paths, keyBase, ttl, options = {}) {
 }
 
 export const ProxyApi = {
+  // Update proxy configuration from settings
+  updateConfig: (base, enabled) => {
+    PROXY_BASE = (base || 'https://raw.githubusercontent.com/ogt-tools/ogt-data-proxy/main').replace(/\/+$/, '');
+    PROXY_ENABLED = enabled !== false;
+  },
+
   isEnabled: () => PROXY_ENABLED,
 
   _fetch: async (path, key, ttl, options = {}) => {

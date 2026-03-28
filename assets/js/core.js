@@ -18,7 +18,9 @@ export function getSettings() {
   const s = safeJsonParse(localStorage.getItem(SETTINGS_KEY) || '{}', {});
   return {
     theme: s.theme === 'light' ? 'light' : 'dark',
-    realm: Number.isFinite(Number(s.realm)) ? Number(s.realm) : 0
+    realm: Number.isFinite(Number(s.realm)) ? Number(s.realm) : 0,
+    proxyBase: s.proxyBase || 'https://raw.githubusercontent.com/ogt-tools/ogt-data-proxy/main',
+    proxyEnabled: s.proxyEnabled !== false
   };
 }
 

@@ -6,6 +6,7 @@
 
 import { createElement } from './utils.js';
 import { getSettings, setSettings } from './core.js';
+import { ProxyApi } from './api.js';
 
 /* -------------------------------------------------------------------------- */
 /*                                THEME ENGINE                                */
@@ -186,6 +187,10 @@ window.Modal = Modal;
 /* -------------------------------------------------------------------------- */
 
 function initializeApp() {
+  // Initialize proxy settings from localStorage
+  const settings = getSettings();
+  ProxyApi.updateConfig(settings.proxyBase, settings.proxyEnabled);
+  
   initTheme();
   initRealm();
   

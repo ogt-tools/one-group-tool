@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="favorites.html" class="nav-item">Favorites</a>
+        <a href="settings.html" class="nav-item active">Settings</a>
+        <button class="theme-toggle" id="themeToggle"><i data-feather="sun" class="icon-sun"></i><i data-feather="moon" class="icon-moon"></i></button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="settings" class="text-gold"></i>
+            <h1 class="tool-title">Settings</h1>
+          </div>
+          <span class="tool-badge">Configuration</span>
+        </div>
+      </div>
+
+      <div class="tool-layout">
+        <aside class="sidebar">
+          <div class="card" style="padding:1rem;">
+            <h5 class="text-gold" style="margin-bottom:1rem;">Quick Actions</h5>
+            <div class="form-group">
+              <button id="testProxyBtn" class="btn btn-primary" style="width:100%;">Test Proxy Connection</button>
+            </div>
+            <div class="form-group">
+              <button id="clearCacheBtn" class="btn btn-outline" style="width:100%;">Clear All Cache</button>
+            </div>
+            <div class="form-group">
+              <button id="resetBtn" class="btn btn-danger" style="width:100%;">Reset to Defaults</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="tool-content">
+          <div class="card" style="padding:1rem; margin-bottom:2rem;">
+            <h4 class="text-secondary" style="margin-bottom:1rem;">🌐 Data Proxy Settings</h4>
+            
+            <div class="form-group">
+              <label class="form-label">Proxy Base URL</label>
+              <input type="url" id="proxyBaseInput" class="form-input" placeholder="https://raw.githubusercontent.com/username/repo/main">
+              <small class="text-secondary">GitHub Pages URL for cached SimCompanies data</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <input type="checkbox" id="proxyEnabled" class="form-checkbox">
+                Enable Proxy (recommended)
+              </label>
+              <small class="text-secondary">Use proxy for faster, unlimited API calls</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Connection Status</label>
+              <div id="proxyStatus" class="text-secondary">Not tested</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:1rem; margin-bottom:2rem;">
+            <h4 class="text-secondary" style="margin-bottom:1rem;">🎨 Appearance</h4>
+            
+            <div class="form-group">
+              <label class="form-label">Theme</label>
+              <select id="themeSelect" class="form-select">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+                <option value="auto">Auto (system)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card" style="padding:1rem; margin-bottom:2rem;">
+            <h4 class="text-secondary" style="margin-bottom:1rem;">📊 Cache Information</h4>
+            
+            <div id="cacheInfo" class="text-secondary">
+              <div>Loading cache information...</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:1rem;">
+            <h4 class="text-secondary" style="margin-bottom:1rem;">ℹ️ About</h4>
+            
+            <div class="text-secondary">
+              <p><strong>ONE Group Tools v1.0.1</strong></p>
+              <p>Advanced SimCompanies analytics and optimization tools.</p>
+              <p>Features real-time market data, profit calculations, and strategic insights.</p>
+              
+              <div style="margin-top:1rem;">
+                <strong>Data Sources:</strong>
+                <ul style="margin-top:0.5rem; padding-left:1.5rem;">
+                  <li>SimCompanies Official API</li>
+                  <li>SimCoTools API</li>
+                  <li>GitHub Pages Data Proxy</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/pages/settings.js"></script>
+</body>
+</html>
