@@ -1,0 +1,13 @@
+{
+  "_comment": "SimCompanies Economy History — Standard Realm. Add new entries at bottom. Format: YYYY-MM-DD.",
+  "_instructions": "To update: append { date: YYYY-MM-DD, phase: Recession|Normal|Boom } to 'history' array.",
+  "realm": 0,
+  "history": [
+    { "date": "2026-02-13", "phase": "Normal" },
+    { "date": "2026-02-20", "phase": "Recession" },
+    { "date": "2026-02-27", "phase": "Normal" },
+    { "date": "2026-03-06", "phase": "Boom" },
+    { "date": "2026-03-13", "phase": "Boom" },
+    { "date": "2026-03-20", "phase": "Normal" }
+  ]
+}

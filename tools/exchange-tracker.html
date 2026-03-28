@@ -1,0 +1,141 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exchange Tracker | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/tools.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script defer src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script defer src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="../pages/favorites.html" class="nav-item">Favorites</a>
+       
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <!-- Sticky Tool Header -->
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="bar-chart-2" class="text-gold"></i>
+            <h1 class="tool-title">Exchange Tracker</h1>
+          </div>
+          <span class="tool-badge">Market</span>
+        </div>
+        <div class="tool-header-right">
+          <button class="btn-sm btn-outline" id="btnHelp">How to use</button>
+          <button class="btn-sm btn-primary" id="btnExport">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- How To Use -->
+      <div class="how-to-use" id="helpPanel">
+        <div class="how-to-use-inner">
+          <h3 class="text-gold">How to use</h3>
+          <ol style="padding-left:1.5rem; margin-bottom:1.5rem; color:var(--text-secondary);">
+            <li style="margin-bottom:0.5rem">Click the Star icon to favorite resources. They appear at the top.</li>
+            <li style="margin-bottom:0.5rem">Select multiple resources (checkbox) to compare them in the chart.</li>
+            <li style="margin-bottom:0.5rem">Click "Refresh All" to fetch the latest prices. Note the API rate limits.</li>
+            <li style="margin-bottom:0.5rem">The "30d Avg" column uses historical data from simcotools.app.</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Comparison Chart -->
+      <div class="card" id="comparison-section" style="margin-bottom:2rem; display:none;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+          <h3 class="text-gold">Price Comparison</h3>
+          <button class="btn-sm btn-outline" onclick="document.getElementById('comparison-section').style.display='none'">Close</button>
+        </div>
+        <div class="chart-container" style="height:300px;">
+          <canvas id="comparison-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card" style="margin-bottom: 1.5rem; padding:1rem;">
+        <div class="grid-3" style="gap:1rem;">
+          <div class="form-group" style="margin:0;">
+            <input type="text" id="search-input" class="form-input" placeholder="Search resources...">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <select id="category-filter" class="form-select">
+              <option value="all">All Categories</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <select id="quality-filter" class="form-select">
+              <option value="0">Quality 0 (Normal)</option>
+              <option value="1">Quality 1 (Good)</option>
+              <option value="2">Quality 2 (Fine)</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center;">
+           <div style="display:flex; gap:0.5rem;">
+             <button id="compare-btn" class="btn btn-outline btn-sm" disabled>Compare Selected</button>
+           </div>
+           <div style="display:flex; gap:1rem; align-items:center;">
+             <span id="last-updated" class="text-secondary text-sm">Updated: Never</span>
+             <button id="refresh-btn" class="btn btn-primary btn-sm"><i data-feather="refresh-cw"></i> Refresh Visible</button>
+           </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-container">
+        <table id="exchange-table">
+          <thead>
+            <tr>
+              <th style="width:40px;"></th>
+              <th style="width:40px;"></th>
+              <th>Resource</th>
+              <th class="text-right">Price</th>
+              <th class="text-right">24h Change</th>
+              <th class="text-right">7d VWAP</th>
+              <th class="text-right">Spread</th>
+              <th class="text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Rows -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/tools/exchange-tracker.js"></script>
+</body>
+</html>
+

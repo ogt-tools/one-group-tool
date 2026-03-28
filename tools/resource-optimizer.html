@@ -1,0 +1,136 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resource Optimizer | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/tools.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="../pages/favorites.html" class="nav-item">Favorites</a>
+       
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <!-- Sticky Tool Header -->
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="cpu" class="text-gold"></i>
+            <h1 class="tool-title">Resource Optimizer</h1>
+          </div>
+          <span class="tool-badge">Production</span>
+        </div>
+        <div class="tool-header-right">
+          <button class="btn-sm btn-outline" id="btnHelp">How to use</button>
+          <button class="btn-sm btn-primary" id="btnExport">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- How To Use -->
+      <div class="how-to-use" id="helpPanel">
+        <div class="how-to-use-inner">
+          <h3 class="text-gold">How to use</h3>
+          <ol style="padding-left:1.5rem; margin-bottom:1.5rem; color:var(--text-secondary);">
+            <li style="margin-bottom:0.5rem">Select your production buildings and their levels.</li>
+            <li style="margin-bottom:0.5rem">Enter your production speed bonus (from SimBoosts, Robots, Executives).</li>
+            <li style="margin-bottom:0.5rem">Click "Find Best Profit" to scan all possible products.</li>
+            <li style="margin-bottom:0.5rem">Click "Details" on any result to jump to the Profit Calculator.</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Main Grid -->
+      <div class="tool-layout">
+        
+        <!-- Controls -->
+        <aside class="sidebar">
+          <div class="card" style="padding:1rem;">
+            <h5 class="text-gold" style="margin-bottom:1rem;">Your Buildings</h5>
+            
+            <div class="form-group">
+              <select id="building-select" class="form-select"><option value="">Loading...</option></select>
+            </div>
+            <div class="form-group">
+              <div style="display:flex; gap:0.5rem;">
+                <input type="number" id="building-qty" class="form-input" placeholder="Count" value="1" min="1">
+                <button id="add-btn" class="btn btn-outline btn-sm">Add</button>
+              </div>
+            </div>
+            
+            <div id="selected-list" style="margin-bottom:1.5rem; max-height:200px; overflow-y:auto;">
+              <!-- Selected items -->
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="form-group">
+              <label class="form-label">Speed Bonus (%)</label>
+              <input type="number" id="speed-bonus" class="form-input" value="0">
+            </div>
+            
+            <button id="optimize-btn" class="btn btn-primary" style="width:100%;">Find Best Profit</button>
+          </div>
+        </aside>
+
+        <!-- Results -->
+        <div class="tool-content">
+          <div class="card">
+            <div class="table-container">
+              <table id="opt-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Building</th>
+                    <th class="text-right">Output/Hr</th>
+                    <th class="text-right">Cost/Hr</th>
+                    <th class="text-right">Profit/Hr</th>
+                    <th class="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body">
+                  <tr><td colspan="6" class="text-center p-4 text-secondary">Add buildings to start.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/tools/resource-optimizer.js"></script>
+</body>
+</html>
+

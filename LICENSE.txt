@@ -1,0 +1,28 @@
+ONE GROUP TOOLS — PROPRIETARY LICENSE
+Copyright (c) 2026 ONE GROUP OF ENTERPRISES. All rights reserved.
+
+This software and all associated files ("ONE Group Tools") are the exclusive
+intellectual property of ONE GROUP OF ENTERPRISES, a company operating within
+the SimCompanies online business simulation game.
+
+PERMITTED:
+  - Personal, non-commercial use of this tool by any individual player
+  - Sharing the URL or link to the hosted version of this tool
+  - Forking this project for personal private use only
+
+PROHIBITED WITHOUT EXPLICIT WRITTEN PERMISSION FROM ONE GROUP OF ENTERPRISES:
+  - Commercial use, monetization, or advertising integration
+  - Redistribution of source files, in whole or in part, on any platform
+  - Creating derivative public tools using this codebase
+  - Removing or altering copyright notices, branding, or attribution
+  - Claiming ownership or authorship of any part of this work
+  - Hosting a public mirror or clone of this site
+
+DISCLAIMER:
+  ONE Group Tools is a fan-made, independent companion platform and is NOT
+  affiliated with, endorsed by, or connected to SimCompanies.com or its
+  operators. All game data, trademarks, and IP referenced herein belong to
+  their respective owners. This tool is provided "as-is" with no warranty.
+
+For permissions or licensing inquiries, contact ONE GROUP OF ENTERPRISES
+via in-game messaging on SimCompanies.com.

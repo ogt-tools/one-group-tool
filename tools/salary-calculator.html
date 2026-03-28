@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Overhead & Executive Planner | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/tools.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="../pages/favorites.html" class="nav-item">Favorites</a>
+        <button class="theme-toggle" id="themeToggle"><i data-feather="sun" class="icon-sun"></i><i data-feather="moon" class="icon-moon"></i></button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="users" class="text-gold"></i>
+            <h1 class="tool-title">Admin Overhead & Executive Planner</h1>
+          </div>
+          <span class="tool-badge">Finance</span>
+        </div>
+        <div class="tool-header-right">
+          <button class="btn-sm btn-outline" id="btnHelp">How to use</button>
+        </div>
+      </div>
+
+      <div class="how-to-use" id="helpPanel">
+        <div class="how-to-use-inner">
+          <h3 class="text-gold">How to use</h3>
+          <ol class="text-secondary" style="padding-left:1.5rem">
+            <li>Enter your <strong>Total Building Levels</strong> (sum of all buildings).</li>
+            <li>Enter your <strong>Total Wages per Hour</strong> (from HQ accounting).</li>
+            <li>Input the <strong>Management Skill</strong> of your executives.</li>
+            <li>The tool calculates the exactly how much money your executives save you in Admin Overhead.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="tool-layout">
+        <aside class="sidebar">
+          <div class="card" style="padding:1rem;">
+            <h5 class="text-gold" style="margin-bottom:1rem;">Company Stats</h5>
+            <div class="form-group">
+              <label class="form-label">Total Building Levels</label>
+              <input type="number" id="total-levels" class="form-input" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Total Wages / Hr ($)</label>
+              <input type="number" id="total-wages" class="form-input" value="1000" min="0">
+            </div>
+            
+            <div class="divider"></div>
+            
+            <h5 class="text-gold" style="margin-bottom:1rem;">Executive Skills</h5>
+            <div class="grid-2">
+              <div class="form-group"><label class="form-label text-xs">COO Mgmt</label><input type="number" id="s-coo" class="form-input" value="0"></div>
+              <div class="form-group"><label class="form-label text-xs">CFO Mgmt</label><input type="number" id="s-cfo" class="form-input" value="0"></div>
+              <div class="form-group"><label class="form-label text-xs">CMO Mgmt</label><input type="number" id="s-cmo" class="form-input" value="0"></div>
+              <div class="form-group"><label class="form-label text-xs">CTO Mgmt</label><input type="number" id="s-cto" class="form-input" value="0"></div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="tool-content">
+          <div class="grid-2" style="margin-bottom:2rem;">
+             <div class="stat-card">
+               <span class="stat-label">Daily Savings</span>
+               <span class="stat-value text-green" id="daily-savings">$0.00</span>
+               <span class="stat-sub">Compared to no executives</span>
+             </div>
+             <div class="stat-card">
+               <span class="stat-label">Effective Admin %</span>
+               <span class="stat-value text-gold" id="eff-ao">0.00%</span>
+               <span class="stat-sub" id="raw-ao">Raw: 0.00%</span>
+             </div>
+          </div>
+          
+          <div class="card">
+            <h3>Overhead Breakdown</h3>
+            <div class="result-row">
+              <span>Management Score</span>
+              <span class="font-mono text-teal" id="mgmt-score">0</span>
+            </div>
+            <div class="result-row">
+              <span>AO Reduction %</span>
+              <span class="font-mono text-green" id="ao-red">-0.00%</span>
+            </div>
+            <div class="result-row">
+              <span>Hourly Admin Cost</span>
+              <span class="font-mono" id="hr-cost">$0.00</span>
+            </div>
+            <div class="result-row" style="border:none">
+              <span>Hourly Savings</span>
+              <span class="font-mono text-green" id="hr-save">$0.00</span>
+            </div>
+          </div>
+
+          <div class="card mt-2" style="margin-top:2rem">
+            <h4 class="text-gold mb-2">Executive Roles</h4>
+            <div class="text-sm text-secondary" style="line-height:1.6">
+              <p>• <strong>COO:</strong> Directly reduces Admin Overhead. 4x more effective than others.</p>
+              <p>• <strong>CFO:</strong> Reduces Corporate Tax rate.</p>
+              <p>• <strong>CMO:</strong> Speeds up retail sales.</p>
+              <p>• <strong>CTO:</strong> Improves research outcomes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/tools/salary-calc.js"></script>
+</body>
+</html>
+

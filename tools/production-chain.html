@@ -1,0 +1,183 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Production Chain | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/tools.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  
+  <style>
+    #tree-container {
+      width: 100%;
+      height: 600px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      position: relative;
+      cursor: grab;
+    }
+    #tree-container:active { cursor: grabbing; }
+    
+    #tree-content {
+      transform-origin: 0 0;
+      position: absolute;
+      top: 0; left: 0;
+      transition: transform 0.1s linear;
+    }
+
+    .node {
+      position: absolute;
+      width: 180px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      z-index: 2;
+      transition: all 0.2s ease;
+    }
+    .node.root { border-color: var(--accent-gold); box-shadow: 0 0 15px var(--glow-gold); }
+    .node.buy-mode { border-color: var(--accent-teal); background: rgba(0, 212, 170, 0.05); }
+    
+    .node-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+    .node-stats { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px; }
+    
+    .node-toggle { display: flex; background: var(--bg-primary); border-radius: 4px; padding: 2px; font-size: 0.75rem; }
+    .node-toggle div { flex: 1; text-align: center; padding: 4px; cursor: pointer; border-radius: 2px; transition: background 0.2s; }
+    .node-toggle div.active { background: var(--border-active); color: var(--text-primary); font-weight: 600; }
+    .node-toggle div.active-buy { background: var(--accent-teal); color: var(--bg-primary); }
+
+    svg.connections {
+      position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; z-index: 1;
+    }
+    path.connector { fill: none; stroke: var(--border-active); stroke-width: 2px; }
+    
+    .zoom-controls {
+      position: absolute; bottom: 1rem; right: 1rem;
+      display: flex; gap: 0.5rem;
+      background: var(--bg-secondary); padding: 0.5rem; border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+    }
+    
+    .total-bar {
+      position: sticky; bottom: 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border-subtle);
+      padding: 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="../pages/favorites.html" class="nav-item">Favorites</a>
+       
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <!-- Sticky Tool Header -->
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="share-2" class="text-gold"></i>
+            <h1 class="tool-title">Production Chain</h1>
+          </div>
+          <span class="tool-badge">Production</span>
+        </div>
+        <div class="tool-header-right">
+          <button class="btn-sm btn-outline" id="btnHelp">How to use</button>
+          <button class="btn-sm btn-primary" id="btnExport">Export PNG</button>
+        </div>
+      </div>
+
+      <!-- How To Use -->
+      <div class="how-to-use" id="helpPanel">
+        <div class="how-to-use-inner">
+          <h3 class="text-gold">How to use</h3>
+          <ol style="padding-left:1.5rem; margin-bottom:1.5rem; color:var(--text-secondary);">
+            <li style="margin-bottom:0.5rem">Select an end product to visualize its full recipe tree.</li>
+            <li style="margin-bottom:0.5rem">Toggle individual nodes between <strong>Build</strong> (produce yourself) and <strong>Buy</strong> (purchase from exchange).</li>
+            <li style="margin-bottom:0.5rem">The total cost updates automatically based on your strategy.</li>
+            <li style="margin-bottom:0.5rem">Drag to pan, scroll to zoom.</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card" style="margin-bottom: 1.5rem; padding:1rem;">
+        <div class="grid-2">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">End Product</label>
+            <select id="resource-select" class="form-select"><option value="">Loading...</option></select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Quantity</label>
+            <input type="number" id="amount-input" class="form-input" value="1" min="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Visualizer -->
+      <div id="tree-container">
+        <div id="tree-content">
+          <svg class="connections" id="connections-layer"></svg>
+          <div id="nodes-layer"></div>
+        </div>
+        
+        <div class="zoom-controls">
+          <button class="btn-icon" onclick="zoom(0.1)"><i data-feather="plus"></i></button>
+          <button class="btn-icon" onclick="zoom(-0.1)"><i data-feather="minus"></i></button>
+          <button class="btn-icon" onclick="resetView()"><i data-feather="maximize"></i></button>
+        </div>
+      </div>
+      
+      <!-- Total Bar -->
+      <div class="total-bar">
+        <div>
+          <span class="text-secondary text-sm">Est. Market Value:</span>
+          <span class="font-mono text-gold" id="market-val">$0.00</span>
+        </div>
+        <div style="text-align:right;">
+          <span class="text-secondary text-sm">Your Cost:</span>
+          <span class="font-mono text-white" style="font-size:1.2rem; font-weight:700;" id="total-cost">$0.00</span>
+          <span class="badge badge-green" id="profit-badge" style="margin-left:0.5rem;">+0%</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/tools/production-chain.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,211 @@
+/* 
+   ONE Group Tools - Tool Specific Styles
+   Version: 1.0.0 (Completion Sprint)
+*/
+
+/* -------------------------------------------------------------------------- */
+/*                                TOOL HEADER                                 */
+/* -------------------------------------------------------------------------- */
+.tool-header {
+  position: sticky;
+  top: 64px; /* Navbar height */
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 1rem 0;
+  margin-bottom: 2rem;
+  z-index: 900;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--bg-primary), 0.9); /* Requires RGB vars for alpha usually, but simple override */
+}
+
+/* Fix for background opacity if RGB vars not set */
+html.theme-dark .tool-header { background: rgba(10, 14, 26, 0.95); }
+html.theme-light .tool-header { background: rgba(244, 246, 251, 0.95); }
+
+.tool-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.btn-back:hover { color: var(--accent-gold); }
+
+.tool-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-family: var(--font-heading);
+}
+
+.tool-badge {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.tool-header-right {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                HOW TO USE                                  */
+/* -------------------------------------------------------------------------- */
+.how-to-use {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow: hidden;
+  max-height: 0; /* JS toggles this */
+  transition: max-height 0.3s ease;
+}
+
+.how-to-use.open {
+  max-height: 500px; /* Arbitrary large number */
+}
+
+.how-to-use-inner {
+  padding: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                TOOL LAYOUT                                 */
+/* -------------------------------------------------------------------------- */
+.tool-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.sidebar {
+  position: sticky;
+  top: 140px; /* Navbar + ToolHeader */
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-btn);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover, .sidebar-link.active {
+  background-color: var(--bg-secondary);
+  color: var(--text-gold);
+}
+
+.sidebar-link.active {
+  background-color: rgba(240, 180, 41, 0.1);
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             CALCULATOR GRID                                */
+/* -------------------------------------------------------------------------- */
+.calc-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr;
+  gap: 1.5rem;
+}
+
+.calc-inputs {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+}
+
+.calc-results {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  position: sticky;
+  top: 140px;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                RESULT CARDS                                */
+/* -------------------------------------------------------------------------- */
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.95rem;
+}
+
+.result-row:last-child { border-bottom: none; }
+
+.result-val {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.result-main {
+  text-align: center;
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.profit-val {
+  font-size: 2.5rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                EMPTY STATE                                 */
+/* -------------------------------------------------------------------------- */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+.empty-state svg {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  opacity: 0.5;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                RESPONSIVE                                  */
+/* -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .tool-layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; } /* On mobile, move sidebar functionality to bottom sheet/modals */
+  .calc-grid { grid-template-columns: 1fr; }
+  .calc-results { position: static; }
+}

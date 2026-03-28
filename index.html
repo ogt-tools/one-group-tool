@@ -1,0 +1,487 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ONE Group Tools - The most complete SimCompanies companion platform. Profit calculator, exchange tracker, and more.">
+  <title>ONE Group Tools | Dashboard</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+  
+  <style>
+    /* Hero Particle Canvas */
+    #hero-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    
+    .hero-section {
+      position: relative;
+      text-align: center;
+      padding: 6rem 0 4rem;
+      overflow: hidden;
+    }
+
+    .hero-subtitle {
+      font-size: var(--text-xl);
+      color: var(--accent-teal);
+      margin-bottom: 1rem;
+      font-family: var(--font-heading);
+      min-height: 1.5em;
+    }
+
+    /* Typewriter Cursor */
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      background-color: var(--accent-teal);
+      animation: blink 1s step-end infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    
+    .stat-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: var(--text-sm);
+      box-shadow: var(--shadow-card);
+    }
+
+    /* Tools Grid Filter */
+    .filter-bar {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      padding: 0.4rem 1rem;
+      border-radius: 999px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+      font-size: var(--text-sm);
+    }
+    
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--accent-gold);
+      color: var(--bg-primary);
+      border-color: var(--accent-gold);
+    }
+
+    .tool-search {
+      max-width: 300px;
+      margin: 0 auto 2rem;
+      position: relative;
+    }
+    .tool-search input {
+      padding-left: 2.5rem;
+      border-radius: 999px;
+    }
+    .tool-search i {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      width: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      
+      <div class="nav-links">
+        <a href="index.html" class="nav-item active">Home</a>
+        
+        <div class="nav-item nav-dropdown">
+          Tools ▾
+          <div class="dropdown-content">
+            <!-- Profit & Finance -->
+            <div>
+              <h5 class="text-gold" style="margin-bottom:0.5rem">Finance</h5>
+              <a href="tools/profit-calculator.html" style="display:block;margin-bottom:0.5rem">Profit Calculator</a>
+              <a href="tools/roi-calculator.html" style="display:block;margin-bottom:0.5rem">ROI Calculator</a>
+              <a href="tools/salary-calculator.html" style="display:block;margin-bottom:0.5rem">Salary Calc</a>
+            </div>
+            <!-- Market -->
+            <div>
+              <h5 class="text-gold" style="margin-bottom:0.5rem">Market</h5>
+              <a href="tools/exchange-tracker.html" style="display:block;margin-bottom:0.5rem">Exchange Tracker</a>
+              <a href="tools/trade-analyzer.html" style="display:block;margin-bottom:0.5rem">Trade Analyzer</a>
+              <a href="tools/retail-calculator.html" style="display:block;margin-bottom:0.5rem">Retail Calc</a>
+            </div>
+            <!-- Production -->
+            <div>
+              <h5 class="text-gold" style="margin-bottom:0.5rem">Production</h5>
+              <a href="tools/production-chain.html" style="display:block;margin-bottom:0.5rem">Production Chain</a>
+              <a href="tools/resource-optimizer.html" style="display:block;margin-bottom:0.5rem">Resource Optimizer</a>
+              <a href="tools/building-advisor.html" style="display:block;margin-bottom:0.5rem">Building Advisor</a>
+            </div>
+            <!-- Strategy -->
+            <div>
+              <h5 class="text-gold" style="margin-bottom:0.5rem">Strategy</h5>
+              <a href="tools/company-compare.html" style="display:block;margin-bottom:0.5rem">Company Compare</a>
+              <a href="tools/strategy-advisor.html" style="display:block;margin-bottom:0.5rem">Strategy Advisor</a>
+              <a href="tools/upgrade-planner.html" style="display:block;margin-bottom:0.5rem">Upgrade Planner</a>
+            </div>
+          </div>
+        </div>
+        
+        <a href="pages/favorites.html" class="nav-item">Favorites</a>
+        
+        <!-- Controls -->
+        <div class="realm-selector">
+          <button class="realm-btn" data-realm="0">Standard</button>
+          <button class="realm-btn" data-realm="1">Entrepreneur</button>
+        </div>
+        
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+          <i data-feather="sun" class="icon-sun" width="20"></i>
+          <i data-feather="moon" class="icon-moon" width="20"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <canvas id="hero-canvas"></canvas>
+        
+        <h1 class="display-title" style="margin-bottom: 1rem;">ONE Group Tools</h1>
+        <div class="hero-subtitle">
+          <span id="typewriter"></span><span class="cursor"></span>
+        </div>
+        
+        <p class="text-muted" style="margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+          The most complete SimCompanies companion platform. <br>
+          Live data, advanced analytics, and strategic planning tools.
+        </p>
+        
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 3rem;">
+          <a href="#tools-grid" class="btn btn-primary">Open Tools</a>
+          <a href="pages/api-docs.html" class="btn btn-outline">API Docs</a>
+        </div>
+
+        <div class="stats-bar">
+          <div class="stat-pill">
+            <i data-feather="globe" width="14" class="text-gold"></i>
+            <span id="stat-economy" class="skeleton" style="width: 80px; display: inline-block;">&nbsp;</span>
+          </div>
+          <div class="stat-pill">
+            <i data-feather="clock" width="14" class="text-teal"></i>
+            <span id="stat-time" class="font-mono">Loading...</span>
+          </div>
+          <div class="stat-pill">
+            <i data-feather="database" width="14" class="text-secondary"></i>
+            <span>API v4 Ready</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tools Grid -->
+      <section class="section" id="tools-grid">
+        <h2 style="text-align: center; margin-bottom: 1rem;">Available Tools</h2>
+        
+        <!-- Search & Filter -->
+        <div class="tool-search">
+          <i data-feather="search"></i>
+          <input type="text" id="toolSearch" class="form-input" placeholder="Find a tool...">
+        </div>
+        
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all">All Tools</button>
+          <button class="filter-btn" data-filter="finance">Finance</button>
+          <button class="filter-btn" data-filter="market">Market</button>
+          <button class="filter-btn" data-filter="prod">Production</button>
+          <button class="filter-btn" data-filter="strat">Strategy</button>
+        </div>
+
+        <div class="grid-3" id="toolsContainer">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <h4>ONE Group Tools</h4>
+        <p class="text-muted" style="margin-top: 0.5rem; max-width: 300px;">
+          Built by ONE GROUP OF ENTERPRISES for the SimCompanies community.
+        </p>
+        <p class="footer-legal">© 2026 ONE GROUP OF ENTERPRISES. All rights reserved.<br>
+        Proprietary license — see <a href="LICENSE.txt">LICENSE.txt</a>.</p>
+      </div>
+      
+      <div class="footer-links">
+        <div>
+          <h5 style="margin-bottom: 1rem;">Tools</h5>
+          <ul style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <li><a href="tools/profit-calculator.html">Profit Calculator</a></li>
+            <li><a href="tools/exchange-tracker.html">Exchange Tracker</a></li>
+            <li><a href="tools/production-chain.html">Production Chain</a></li>
+          </ul>
+        </div>
+        <div>
+          <h5 style="margin-bottom: 1rem;">Project</h5>
+          <ul style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <li><a href="pages/about.html">About</a></li>
+            <li><a href="pages/changelog.html">Changelog</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="./assets/js/utils.js"></script>
+  <script type="module" src="./assets/js/api.js"></script>
+  <script type="module" src="./assets/js/app.js"></script>
+  
+  <script type="module">
+    import { SimCoApi } from './assets/js/api.js';
+    import { createElement } from './assets/js/utils.js';
+
+    // Tool Data
+    const TOOLS = [
+      { id: 'profit', name: 'Profit Calculator', cat: 'finance', icon: 'dollar-sign', url: 'tools/profit-calculator.html', desc: 'Calculate real net profit with tax & labor.', badges: ['popular'] },
+      { id: 'roi', name: 'ROI Calculator', cat: 'finance', icon: 'trending-up', url: 'tools/roi-calculator.html', desc: 'Analyze investment payback periods.' },
+      { id: 'salary', name: 'Salary Calculator', cat: 'finance', icon: 'users', url: 'tools/salary-calculator.html', desc: 'Estimate executive salaries.' },
+      
+      { id: 'exch', name: 'Exchange Tracker', cat: 'market', icon: 'bar-chart-2', url: 'tools/exchange-tracker.html', desc: 'Live price monitoring with alerts.', badges: ['popular'] },
+      { id: 'trade', name: 'Trade Analyzer', cat: 'market', icon: 'search', url: 'tools/trade-analyzer.html', desc: 'Find sniping opportunities.' },
+      { id: 'retail', name: 'Retail Calculator', cat: 'market', icon: 'shopping-bag', url: 'tools/retail-calculator.html', desc: 'Optimize retail markup and demand.' },
+      
+      { id: 'chain', name: 'Production Chain', cat: 'prod', icon: 'share-2', url: 'tools/production-chain.html', desc: 'Visual recursive recipe tree.', badges: ['popular'] },
+      { id: 'opt', name: 'Resource Optimizer', cat: 'prod', icon: 'cpu', url: 'tools/resource-optimizer.html', desc: 'Best products for your buildings.' },
+      { id: 'build', name: 'Building Advisor', cat: 'prod', icon: 'arrow-up-circle', url: 'tools/building-advisor.html', desc: 'Upgrade cost analysis.' },
+      { id: 'quality', name: 'Quality Calculator', cat: 'prod', icon: 'award', url: 'tools/quality-calculator.html', desc: 'Market premiums for Q1-Q12.' },
+      
+      { id: 'comp', name: 'Company Compare', cat: 'strat', icon: 'briefcase', url: 'tools/company-compare.html', desc: 'Head-to-head stat comparison.', badges: ['new'] },
+      { id: 'advise', name: 'Strategy Advisor', cat: 'strat', icon: 'compass', url: 'tools/strategy-advisor.html', desc: 'AI-based growth recommendations.', badges: ['new'] },
+      { id: 'plan', name: 'Upgrade Planner', cat: 'strat', icon: 'layers', url: 'tools/upgrade-planner.html', desc: 'Timeline roadmap for expansion.', badges: ['new'] },
+      { id: 'econ', name: 'Economy Tracker', cat: 'strat', icon: 'globe', url: 'tools/economy-tracker.html', desc: 'Track phases and changes.' },
+      { id: 'trans', name: 'Transport Calc', cat: 'market', icon: 'truck', url: 'tools/transport-calculator.html', desc: 'Shipping cost estimator.' },
+      { id: 'work', name: 'Workforce Calc', cat: 'prod', icon: 'briefcase', url: 'tools/workforce-calculator.html', desc: 'Sales office efficiency.' }
+    ];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderTools(TOOLS);
+      initHeroAnimation();
+      initTypewriter();
+      
+      // Load Stats
+      try {
+        const stats = await SimCoApi.getServerStatus();
+        const econEl = document.getElementById('stat-economy');
+        econEl.textContent = stats.economy || "Normal";
+        econEl.classList.remove('skeleton');
+        
+        if(stats.economy === "Recession") econEl.className = "text-red";
+        if(stats.economy === "Boom") econEl.className = "text-green";
+        
+        // Time update
+        setInterval(() => {
+          document.getElementById('stat-time').textContent = new Date().toUTCString().replace('GMT', 'UTC');
+        }, 1000);
+        
+      } catch (e) { console.warn(e); }
+      
+      // Filter Logic
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const cat = btn.dataset.filter;
+          const filtered = cat === 'all' ? TOOLS : TOOLS.filter(t => t.cat === cat);
+          renderTools(filtered);
+        };
+      });
+      
+      // Search Logic
+      document.getElementById('toolSearch').addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = TOOLS.filter(t => t.name.toLowerCase().includes(term) || t.desc.toLowerCase().includes(term));
+        renderTools(filtered);
+      });
+    });
+
+    function renderTools(list) {
+      const container = document.getElementById('toolsContainer');
+      container.innerHTML = '';
+      
+      if (list.length === 0) {
+        container.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No tools found.</p>';
+        return;
+      }
+      
+      list.forEach(tool => {
+        const badges = (tool.badges || []).map(b => 
+          `<span class="badge badge-${b==='new'?'teal':'gold'}" style="margin-left:auto">${b}</span>`
+        ).join('');
+        
+        const card = createElement('a', 'card');
+        card.href = tool.url;
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div class="card-icon"><i data-feather="${tool.icon}"></i></div>
+            ${badges}
+          </div>
+          <div class="card-title">${tool.name}</div>
+          <div class="card-desc">${tool.desc}</div>
+          <span class="text-teal" style="font-size: 0.9rem; font-weight: 600;">Open Tool →</span>
+        `;
+        container.appendChild(card);
+      });
+      feather.replace();
+    }
+
+    // Typewriter Effect
+    function initTypewriter() {
+      const texts = ["Smarter Decisions.", "Bigger Profits.", "Better Strategy."];
+      let count = 0;
+      let index = 0;
+      let currentText = "";
+      let letter = "";
+      
+      (function type() {
+        if (count === texts.length) count = 0;
+        currentText = texts[count];
+        letter = currentText.slice(0, ++index);
+        
+        const el = document.getElementById('typewriter');
+        if(el) el.textContent = letter;
+        
+        if (letter.length === currentText.length) {
+          count++;
+          index = 0;
+          setTimeout(type, 2000);
+        } else {
+          setTimeout(type, 100);
+        }
+      })();
+    }
+
+    // Hero Particle Animation
+    function initHeroAnimation() {
+      const canvas = document.getElementById('hero-canvas');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      let width, height;
+      let particles = [];
+      
+      function resize() {
+        width = canvas.width = canvas.parentElement.offsetWidth;
+        height = canvas.height = canvas.parentElement.offsetHeight;
+      }
+      
+      window.addEventListener('resize', resize);
+      resize();
+      
+      class Particle {
+        constructor() {
+          this.x = Math.random() * width;
+          this.y = Math.random() * height;
+          this.vx = (Math.random() - 0.5) * 0.5;
+          this.vy = (Math.random() - 0.5) * 0.5;
+          this.size = Math.random() * 2 + 1;
+        }
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          if(this.x < 0 || this.x > width) this.vx *= -1;
+          if(this.y < 0 || this.y > height) this.vy *= -1;
+        }
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary');
+          ctx.fill();
+        }
+      }
+      
+      for(let i=0; i<50; i++) particles.push(new Particle());
+      
+      function animate() {
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw lines
+        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border-subtle');
+        ctx.lineWidth = 0.5;
+        
+        for(let i=0; i<particles.length; i++) {
+          particles[i].update();
+          particles[i].draw();
+          
+          for(let j=i; j<particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if(dist < 100) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+  </script>
+</body>
+</html>
+

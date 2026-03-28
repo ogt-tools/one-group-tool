@@ -1,0 +1,232 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profit Calculator | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/tools.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  
+  <style>
+    .combo-wrapper { position: relative; }
+    .combo-input { padding-right: 2rem; }
+    .combo-list {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-input);
+      max-height: 300px; overflow-y: auto;
+      z-index: 100; display: none;
+      box-shadow: var(--shadow-card);
+    }
+    .combo-list.open { display: block; }
+    .combo-item {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      display: flex; justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .combo-item:hover { background: var(--bg-hover); color: var(--accent-gold); }
+    .combo-cat { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="../pages/favorites.html" class="nav-item">Favorites</a>
+        <button class="theme-toggle" id="themeToggle"><i data-feather="sun" class="icon-sun"></i><i data-feather="moon" class="icon-moon"></i></button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="dollar-sign" class="text-gold"></i>
+            <h1 class="tool-title">Profit Calculator</h1>
+          </div>
+          <span class="tool-badge">Finance</span>
+        </div>
+        <div class="tool-header-right">
+          <button class="btn-sm btn-outline" id="btnHelp">How to use</button>
+          <button class="btn-sm btn-outline" id="btnReset">Reset</button>
+          <button class="btn-sm btn-primary" id="btnExport">Export</button>
+          <button class="btn-sm btn-outline" id="btnShare"><i data-feather="share"></i></button>
+        </div>
+      </div>
+
+      <div class="how-to-use" id="helpPanel">
+        <div class="how-to-use-inner">
+          <h3 class="text-gold">How to use</h3>
+          <ol style="padding-left:1.5rem; color:var(--text-secondary);">
+            <li>Select a resource from the search bar.</li>
+            <li>Enter your <strong>Building Level</strong> and <strong>Total Building Levels</strong> (for accurate Admin Overhead).</li>
+            <li>Set your <strong>Executive Skills</strong> to reduce AO and Tax.</li>
+            <li>The tool uses confirmed SimCompanies formulas for real net profit.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="calc-grid" id="main-content">
+        <div class="calc-inputs">
+          <h3 class="text-gold" style="margin-bottom:1.5rem;">Configuration</h3>
+          
+          <div class="form-group">
+            <label class="form-label">Resource</label>
+            <div class="combo-wrapper">
+              <input type="text" id="resource-search" class="form-input combo-input" placeholder="Search resources..." autocomplete="off">
+              <div class="combo-list" id="resource-list"></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Quality (Q0-Q4)</label>
+            <input type="range" id="quality" min="0" max="4" value="0" style="width:100%">
+              <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-secondary)">
+                <span id="q-val">Q0</span>
+                <span>Q4</span>
+              </div>
+          </div>
+            <div class="form-group">
+              <label class="form-label">Quantity</label>
+              <input type="number" id="amount" class="form-input" value="1" min="1">
+            </div>
+          </div>
+
+          <div class="divider"><span class="divider-label">Building & AO</span></div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Building Level</label>
+              <input type="number" id="building-level" class="form-input" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Total Levels (All)</label>
+              <input type="number" id="total-levels" class="form-input" value="1" min="1">
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Speed Bonus (%)</label>
+              <input type="number" id="speed-bonus" class="form-input" value="0">
+            </div>
+            <div class="form-group" id="abundance-group" style="display:none">
+              <label class="form-label">Abundance (%)</label>
+              <input type="number" id="abundance" class="form-input" value="100" min="1" max="100">
+            </div>
+          </div>
+
+          <div class="divider"><span class="divider-label">Executives (Management)</span></div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label text-xs">COO Mgmt</label><input type="number" id="coo-mgmt" class="form-input" value="0"></div>
+            <div class="form-group"><label class="form-label text-xs">CFO Mgmt</label><input type="number" id="cfo-mgmt" class="form-input" value="0"></div>
+            <div class="form-group"><label class="form-label text-xs">CMO Mgmt</label><input type="number" id="cmo-mgmt" class="form-input" value="0"></div>
+            <div class="form-group"><label class="form-label text-xs">CTO Mgmt</label><input type="number" id="cto-mgmt" class="form-input" value="0"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="form-group">
+            <label class="form-label">Sell Price</label>
+            <div style="display:flex; gap:0.5rem;">
+              <input type="number" id="price" class="form-input" step="0.01" placeholder="0.00">
+              <button class="btn btn-outline btn-sm" id="fetchPrice">Fetch</button>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Method</label>
+              <select id="method" class="form-select">
+                <option value="exchange">Exchange (4%)</option>
+                <option value="contract">Contract (0%)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tax Rate (%)</label>
+              <input type="number" id="tax-rate" class="form-input" value="15">
+            </div>
+          </div>
+          <div class="text-secondary text-sm" style="margin-top:0.25rem;">
+            Exchange fee: 4%
+            <span data-tooltip="User-confirmed rate. Official guide says 3%. Verify in-game." style="cursor:help">ⓘ</span>
+          </div>
+
+          <div id="event-note" class="text-sm text-yellow" style="margin-top:0.5rem; display:none;">
+            ⚡ Event: <span id="event-text"></span>
+          </div>
+
+          <div class="form-group">
+            <label style="font-size:0.85rem; display:flex; align-items:center; gap:0.5rem; cursor:pointer; margin-bottom:0.5rem">
+              <input type="checkbox" id="override-costs"> Manual Override Costs
+            </label>
+            <div id="ingredients-list" style="background:var(--bg-secondary); border-radius:var(--radius-input); padding:1rem;">
+              <p class="text-muted text-sm">Select a resource...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="calc-results">
+          <h3 class="text-teal" style="margin-bottom:1.5rem;">Analysis</h3>
+          
+          <div class="stat-card" style="margin-bottom:1.5rem;" id="profit-card">
+            <span class="stat-label">Net Profit</span>
+            <span class="stat-value" id="res-profit">$0.00</span>
+            <div style="display:flex; justify-content:space-between; margin-top:0.5rem;">
+              <span class="stat-sub" id="res-ppu">$0.00 / unit</span>
+              <span class="stat-sub" id="res-margin">0% Margin</span>
+            </div>
+          </div>
+
+          <div class="card" style="padding:1rem; margin-bottom:1.5rem;">
+            <div class="result-row"><span>Revenue</span><span class="font-mono text-gold" id="row-rev">$0.00</span></div>
+            <div class="result-row"><span>Materials (COGS)</span><span class="font-mono" id="row-cogs">$0.00</span></div>
+            <div class="result-row"><span>Labor (Wages + AO)</span><span class="font-mono" id="row-labor">$0.00</span></div>
+            <div class="result-row"><span>Transport</span><span class="font-mono" id="row-trans">$0.00</span></div>
+            <div class="result-row"><span>Market Fees (4%)</span><span class="font-mono" id="row-fees">$0.00</span></div>
+            <div class="result-row"><span>Corp Tax</span><span class="font-mono text-red" id="row-tax">$0.00</span></div>
+            <div class="result-row" style="border:none; padding-top:0.5rem; margin-top:0.5rem; border-top:1px dashed var(--border-subtle);">
+              <span class="text-gold">Break-Even Price</span>
+              <span class="font-mono text-gold" id="res-be">$0.00</span>
+            </div>
+          </div>
+
+          <div class="chart-container" style="height:250px;">
+            <canvas id="costChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/tools/profit-calc.js"></script>
+</body>
+</html>
+

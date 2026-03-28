@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favorites | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="favorites.html" class="nav-item active">Favorites</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      <h1 class="text-gold" style="margin-bottom: 2rem;">Favorites & Quick Access</h1>
+
+      <div class="grid-2">
+        <!-- Starred Resources -->
+        <div>
+          <h3 style="margin-bottom:1rem;">Starred Resources</h3>
+          <div class="card">
+            <div id="fav-list">
+              <p class="text-muted">No favorites yet. Star items in the <a href="../tools/exchange-tracker.html" class="text-gold">Exchange Tracker</a>.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Tools -->
+        <div>
+          <h3 style="margin-bottom:1rem;">Recent Tools</h3>
+          <div class="card">
+            <div class="sidebar-menu">
+              <a href="../tools/profit-calculator.html" class="sidebar-link">
+                <i data-feather="dollar-sign" width="16"></i> Profit Calculator
+              </a>
+              <a href="../tools/exchange-tracker.html" class="sidebar-link">
+                <i data-feather="bar-chart-2" width="16"></i> Exchange Tracker
+              </a>
+              <a href="../tools/production-chain.html" class="sidebar-link">
+                <i data-feather="share-2" width="16"></i> Production Chain
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/api.js"></script>
+  <script type="module" src="../assets/js/utils.js"></script>
+  
+  <script type="module">
+    import { SimCoApi } from '../assets/js/api.js';
+    import { formatMoney, createElement } from '../assets/js/utils.js';
+    import { getRealm } from '../assets/js/core.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Load Favs
+      const favIds = JSON.parse(localStorage.getItem('og_favorites') || '[]');
+      const container = document.getElementById('fav-list');
+
+      const realm = getRealm();
+      
+      if (favIds.length > 0) {
+        container.innerHTML = '<div class="skeleton" style="height:100px"></div>';
+        
+        try {
+          const all = await SimCoApi.getAllResources(realm);
+          container.innerHTML = '';
+          
+          for (const id of favIds) {
+            const res = all.find(r => r.id === id);
+            if (!res) continue;
+            
+            // Fetch price
+            let price = 0;
+            try {
+              const listings = await SimCoApi.getExchangeListings(id, realm);
+              if(listings.length) price = listings[0].price;
+            } catch {}
+
+            const div = createElement('div');
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.padding = '0.5rem 0';
+            div.style.borderBottom = '1px solid var(--border-subtle)';
+            div.innerHTML = `
+              <span>${res.name}</span>
+              <div style="text-align:right">
+                <div class="font-mono text-gold">${formatMoney(price)}</div>
+                <a href="../tools/profit-calculator.html?resource=${res.name.toLowerCase().replace(/\s+/g,'-')}" style="font-size:0.8rem; color:var(--text-secondary)">Calc Profit →</a>
+              </div>
+            `;
+            container.appendChild(div);
+          }
+        } catch (e) {
+          console.error(e);
+          container.innerHTML = '<p class="text-red">Failed to load data.</p>';
+        }
+      }
+      
+      feather.replace();
+    });
+  </script>
+</body>
+</html>
+

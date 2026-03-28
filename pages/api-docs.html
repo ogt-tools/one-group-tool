@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Docs | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+</head>
+<body>
+  
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      <h1 class="text-gold" style="margin-bottom: 2rem;">API Documentation</h1>
+      
+      <div class="card" style="margin-bottom: 2rem;">
+        <h3>Overview</h3>
+        <p class="text-muted">
+          ONE Group Tools consumes the public <strong>SimCompanies API v4</strong> (and legacy v2/v3). 
+          We do not provide our own backend API. All data is fetched directly from SimCompanies servers 
+          and cached locally in your browser (LocalStorage) to respect rate limits.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <h3 class="text-teal" style="margin-bottom:1rem;">SimCompanies API</h3>
+          <div class="card">
+            <ul style="list-style: none;">
+              <li style="margin-bottom: 1rem;">
+                <code class="text-gold">GET /v2/en/encyclopedia/resources/</code>
+                <p class="text-secondary" style="font-size: 0.9rem;">Base resource definitions.</p>
+              </li>
+              <li style="margin-bottom: 1rem;">
+                <code class="text-gold">GET /v2/en/exchange/{id}/</code>
+                <p class="text-secondary" style="font-size: 0.9rem;">Live market listings.</p>
+              </li>
+              <li style="margin-bottom: 1rem;">
+                <code class="text-gold">GET /v2/en/companies/{id}/</code>
+                <p class="text-secondary" style="font-size: 0.9rem;">Public company profiles.</p>
+              </li>
+            </ul>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="text-gold" style="margin-bottom:1rem;">Enrichment (SimCoTools)</h3>
+          <div class="card">
+            <p class="text-muted" style="margin-bottom:1rem;">
+              We use <a href="https://simcotools.app" target="_blank" class="text-gold">simcotools.app</a> as an enrichment layer for historical data.
+            </p>
+            <ul style="list-style: none;">
+              <li style="margin-bottom: 1rem;">
+                <code class="text-teal">GET /api/v3/resources/{id}?realm={r}</code>
+                <p class="text-secondary" style="font-size: 0.9rem;">Historical price averages (30d) and trends.</p>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-top:2rem;">
+        <h3>Rate Limiting Policy</h3>
+        <p class="text-muted">
+          We strictly adhere to SimCompanies API guidelines. All requests are throttled (min 500ms spacing) and cached.
+          Exchange data is cached for 5 minutes. Static data is cached indefinitely until cleared.
+        </p>
+      </div>
+
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <h4>ONE Group Tools</h4>
+        <p class="footer-legal">© 2026 ONE GROUP OF ENTERPRISES. All rights reserved.<br>
+        Proprietary license — see <a href="../LICENSE.txt">LICENSE.txt</a>.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../assets/js/app.js" type="module"></script>
+  <script>feather.replace();</script>
+</body>
+</html>
+

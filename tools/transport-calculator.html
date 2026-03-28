@@ -1,0 +1,111 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transport Calculator | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/tools.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="../pages/favorites.html" class="nav-item">Favorites</a>
+        <button class="theme-toggle" id="themeToggle"><i data-feather="sun" class="icon-sun"></i><i data-feather="moon" class="icon-moon"></i></button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="truck" class="text-gold"></i>
+            <h1 class="tool-title">Transport Calculator</h1>
+          </div>
+          <span class="tool-badge">Market</span>
+        </div>
+        <div class="tool-header-right">
+          <button class="btn-sm btn-outline" id="btnHelp">How to use</button>
+        </div>
+      </div>
+
+      <div class="how-to-use" id="helpPanel">
+        <div class="how-to-use-inner">
+          <h3 class="text-gold">How to use</h3>
+          <ol class="text-secondary" style="padding-left:1.5rem">
+            <li>Select the resource and the total quantity.</li>
+            <li>Choose <strong>Exchange</strong> or <strong>Contract</strong>.</li>
+            <li><strong>Contracts:</strong> Senders pay 50% of the transport required for exchange.</li>
+            <li><strong>Exchange:</strong> Buyers pay 100% of the transport shown in encyclopedia.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="tool-layout">
+        <aside class="sidebar">
+          <div class="card" style="padding:1rem;">
+            <h5 class="text-gold" style="margin-bottom:1rem;">Shipment Details</h5>
+            <div class="form-group">
+              <label class="form-label">Resource</label>
+              <select id="resource-select" class="form-select"><option value="">Loading...</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quantity</label>
+              <input type="number" id="qty-input" class="form-input" value="1000" min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Shipping Method</label>
+              <select id="method-select" class="form-select">
+                <option value="exchange">Exchange (100%)</option>
+                <option value="contract">Contract (50%)</option>
+              </select>
+            </div>
+            <button id="calc-btn" class="btn btn-primary" style="width:100%;">Calculate Cost</button>
+          </div>
+        </aside>
+
+        <div class="tool-content">
+          <div class="grid-2" style="margin-bottom:2rem;">
+             <div class="stat-card">
+               <span class="stat-label">Shipping Cost</span>
+               <span class="stat-value text-red" id="total-cost">$0.00</span>
+               <span class="stat-sub" id="cost-per-unit">$0.00 / unit</span>
+             </div>
+             <div class="stat-card">
+               <span class="stat-label">Transport Units</span>
+               <span class="stat-value text-gold" id="units-needed">0</span>
+               <span class="stat-sub" id="transport-price">Price: $0.35</span>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/tools/transport-calc.js"></script>
+</body>
+</html>
+

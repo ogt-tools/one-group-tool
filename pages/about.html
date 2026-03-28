@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="about.html" class="nav-item active">About</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      <section class="section" style="max-width: 800px; margin: 0 auto; text-align: center;">
+        <h1 class="display-title" style="margin-bottom: 2rem;">About ONE Group Tools</h1>
+        
+        <div class="card" style="text-align: left; padding: 2rem; margin-bottom: 2rem;">
+          <p style="margin-bottom: 1rem;">
+            ONE Group Tools is a fan-made companion platform for <strong>SimCompanies</strong>, built and maintained by the in-game company 
+            <strong class="text-gold">ONE GROUP OF ENTERPRISES</strong>.
+          </p>
+          <p style="margin-bottom: 1rem;">
+            Our goal is to give every SimCompanies player — from newcomers to seasoned industrialists — the smartest, most comprehensive free toolkit available.
+          </p>
+          <p>
+            Unlike other platforms, ONE Group Tools focuses on <strong>modern design</strong>, <strong>live data analysis</strong>, and <strong>strategic planning</strong> rather than just simple calculators.
+          </p>
+        </div>
+
+        <div class="grid-3" style="margin-bottom: 2rem; text-align: left;">
+          <div class="card">
+            <h4 class="text-teal">100% Free</h4>
+            <p class="text-secondary" style="font-size: 0.9rem;">No paywalls, no subscriptions. Just pure utility.</p>
+          </div>
+          <div class="card">
+            <h4 class="text-teal">Private & Secure</h4>
+            <p class="text-secondary" style="font-size: 0.9rem;">Runs entirely in your browser. No server-side tracking.</p>
+          </div>
+          <div class="card">
+            <h4 class="text-teal">Proprietary</h4>
+            <p class="text-secondary" style="font-size: 0.9rem;">Exclusive software for the SimCompanies community.</p>
+          </div>
+        </div>
+
+        <div style="font-size: 0.85rem; color: var(--text-secondary); border-top: 1px solid var(--border-subtle); padding-top: 2rem; text-align: left;">
+          <h4 style="color:var(--text-primary); margin-bottom:0.5rem;">Legal & License</h4>
+          <p style="margin-bottom: 0.5rem;">This software is the exclusive intellectual property of ONE GROUP OF ENTERPRISES.</p>
+          <p style="margin-bottom: 1rem;">You may use it freely for personal gameplay. You may NOT redistribute, modify, or host public mirrors of this tool without written permission.</p>
+          <p>Disclaimer: ONE Group Tools is not affiliated with or endorsed by SimCompanies.com. All game data belongs to SimCompanies.</p>
+          <p style="margin-top: 1rem;"><a href="../LICENSE.txt" class="btn btn-outline btn-sm">Read Full License</a></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <h4>ONE Group Tools</h4>
+        <p class="footer-legal">© 2026 ONE GROUP OF ENTERPRISES. All rights reserved.<br>
+        Proprietary license — see <a href="../LICENSE.txt">LICENSE.txt</a>.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../assets/js/app.js" type="module"></script>
+  <script>feather.replace();</script>
+</body>
+</html>
+

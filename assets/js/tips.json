@@ -1,0 +1,29 @@
+{
+  "profit-calculator": [
+    "You can manually override any input cost by checking the 'Override' box.",
+    "The Break-Even price accounts for your entered Tax Rate (default 15%).",
+    "Use the Share button to generate a URL with your current configuration.",
+    "Click the Star icon in Exchange Tracker to quickly access resources here."
+  ],
+  "exchange-tracker": [
+    "Prices update every 5 minutes per SimCompanies rate limits.",
+    "The 'Spread' is the difference between the lowest and next-lowest listing.",
+    "Use the Compare button to plot multiple resources on the same chart.",
+    "The 30d Average helps you spot if current prices are inflated."
+  ],
+  "production-chain": [
+    "Scroll to zoom in/out of the tree view.",
+    "Toggle 'Buy' on any node to calculate cost based on market price instead of production.",
+    "The red/green badge at the bottom shows your profit margin instantly."
+  ],
+  "resource-optimizer": [
+    "Enter your total production speed bonus to see accurate output per hour.",
+    "This tool ranks products by Profit/Hour, not just revenue.",
+    "Click 'Details' to open the Profit Calculator for a specific product."
+  ],
+  "building-advisor": [
+    "Upgrade costs are estimates based on standard material prices.",
+    "ROI time calculates how long until the profit increase pays for the upgrade.",
+    "Consider admin overhead when upgrading past level 10."
+  ]
+}

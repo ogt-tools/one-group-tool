@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building Advisor | ONE Group Tools</title>
+  
+  <script>
+    (function(){
+      var s = JSON.parse(localStorage.getItem('og_settings')||'{}');
+      document.documentElement.className = 'theme-' + (s.theme || 'dark');
+    })();
+  </script>
+
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/tools.css">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons@4.29.2/dist/feather.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="text-gold">ONE</span> Group Tools
+      </a>
+      <div class="nav-links">
+        <a href="../index.html" class="nav-item">Home</a>
+        <a href="../pages/favorites.html" class="nav-item">Favorites</a>
+       
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      
+      <!-- Sticky Tool Header -->
+      <div class="tool-header">
+        <div class="tool-header-left">
+          <button class="btn-back" onclick="history.back()"><i data-feather="arrow-left"></i> Back</button>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-feather="arrow-up-circle" class="text-gold"></i>
+            <h1 class="tool-title">Building Advisor</h1>
+          </div>
+          <span class="tool-badge">Production</span>
+        </div>
+        <div class="tool-header-right">
+          <button class="btn-sm btn-outline" id="btnHelp">How to use</button>
+          <button class="btn-sm btn-primary" id="btnExport">Export</button>
+        </div>
+      </div>
+
+      <!-- How To Use -->
+      <div class="how-to-use" id="helpPanel">
+        <div class="how-to-use-inner">
+          <h3 class="text-gold">How to use</h3>
+          <ol style="padding-left:1.5rem; margin-bottom:1.5rem; color:var(--text-secondary);">
+            <li style="margin-bottom:0.5rem">Select your building and the product you mainly produce there.</li>
+            <li style="margin-bottom:0.5rem">Enter current level and target level.</li>
+            <li style="margin-bottom:0.5rem">The tool estimates upgrade costs (materials) and profit increase.</li>
+            <li style="margin-bottom:0.5rem"><strong>Note:</strong> Upgrade costs are estimated based on typical material usage.</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="calc-grid" id="main-content">
+        
+        <!-- Controls -->
+        <div class="calc-inputs">
+          <h3 class="text-gold" style="margin-bottom:1.5rem;">Configuration</h3>
+          
+          <div class="form-group">
+            <label class="form-label">Building Type</label>
+            <select id="building-select" class="form-select"><option value="">Loading...</option></select>
+          </div>
+          
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">From Level</label>
+              <input type="number" id="from-level" class="form-input" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">To Level</label>
+              <input type="number" id="to-level" class="form-input" value="2" min="2">
+            </div>
+          </div>
+
+          <div class="form-group">
+             <label class="form-label">Primary Product</label>
+             <select id="product-select" class="form-select" disabled>
+               <option value="">Select Building First</option>
+             </select>
+             <p class="text-secondary" style="font-size:0.75rem; margin-top:0.25rem;">Used to calculate profit gain.</p>
+          </div>
+          
+          <div class="form-group">
+             <label class="form-label">Admin Overhead (%)</label>
+             <input type="number" id="admin-input" class="form-input" value="0">
+          </div>
+
+          <button id="calculate-btn" class="btn btn-primary" style="width:100%;">Calculate ROI</button>
+        </div>
+
+        <!-- Results -->
+        <div class="calc-results">
+          <h3 class="text-teal" style="margin-bottom:1.5rem;">Analysis</h3>
+          
+          <div class="stat-card" style="margin-bottom:1.5rem;">
+            <span class="stat-label">Estimated Investment</span>
+            <span class="stat-value text-red" id="upgrade-cost">$0.00</span>
+            <span class="stat-sub" id="material-list">...</span>
+          </div>
+
+          <div class="grid-2" style="margin-bottom:1.5rem;">
+            <div class="stat-card">
+              <span class="stat-label">Profit Increase</span>
+              <span class="stat-value text-green" style="font-size:1.5rem;" id="profit-increase">$0.00/hr</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Time to ROI</span>
+              <span class="stat-value text-gold" style="font-size:1.5rem;" id="roi-time">—</span>
+            </div>
+          </div>
+          
+          <div class="card" style="padding:1rem;">
+            <div class="chart-container" style="height:200px;">
+              <canvas id="roi-timeline-chart"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="../assets/js/app.js"></script>
+  <script type="module" src="../assets/js/tools/building-advisor.js"></script>
+</body>
+</html>
+
