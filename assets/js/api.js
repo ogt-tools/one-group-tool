@@ -12,6 +12,7 @@ let PROXY_ENABLED = true;
 
 // API base URLs
 const STC = 'https://api.simcotools.com';
+// Legacy SimCompanies URLs (deprecated - kept for fallback only)
 const SC_V2 = 'https://www.simcompanies.com/api/v2';
 const SC_V3 = 'https://www.simcompanies.com/api/v3';
 const SC_V4 = 'https://www.simcompanies.com/api/v4';
@@ -608,12 +609,19 @@ export const SimCoApi = {
   getMarketTicker: async (realm = 0) => {
     const r = normalizeRealm(realm);
     try {
-      const data = await fetchFirst(
-        [`${SC_V3}/market-ticker/${r}/`, `${SC_V2}/market-ticker/${r}/`],
-        `sc_ticker_${r}`,
+      // Use SimCoTools API instead of SimCompanies
+      const data = await fetchStc(
+        [`/v1/realms/${r}/market/prices`],
+        `stc_ticker_${r}`,
         TTL.TICKER
       );
-      return toArr(data);
+      // Transform SimCoTools price data to match expected ticker format
+      const prices = normalizePriceEntries(data?.prices ?? data);
+      return prices.map(row => ({
+        kind: row.resourceId,
+        price: row.price,
+        quality: row.quality
+      }));
     } catch {
       return [];
     }
@@ -622,12 +630,13 @@ export const SimCoApi = {
   getAllResources: async (realm = 0) => {
     const r = normalizeRealm(realm);
     try {
-      const data = await fetchFirst(
-        [`${SC_V2}/en/encyclopedia/resources/`, `${SC_V3}/en/encyclopedia/resources/`],
-        `sc_resources_${r}`,
+      // Use SimCoTools API instead of SimCompanies
+      const data = await fetchStc(
+        [`/v1/realms/${r}/resources`],
+        `stc_resources_${r}`,
         TTL.CATALOG
       );
-      const rows = normalizeResources(data);
+      const rows = normalizeResources(data?.resources ?? data);
       if (rows.length) return rows;
     } catch {
       // continue to fallbacks
@@ -640,7 +649,7 @@ export const SimCoApi = {
       // continue
     }
 
-    const stale = cacheStale(`sc_resources_${r}_0`);
+    const stale = cacheStale(`stc_resources_${r}_0`);
     const staleRows = normalizeResources(stale);
     if (staleRows.length) {
       if (hasWindow) window.showToast?.('Using cached resource list (API unavailable)', 'warning');
@@ -666,16 +675,15 @@ export const SimCoApi = {
     if (!Number.isFinite(rid)) return null;
 
     try {
-      const data = await fetchFirst(
-        [
-          `${SC_V3}/en/encyclopedia/resources/${r}/${rid}/`,
-          `${SC_V2}/en/encyclopedia/resources/${rid}/`,
-        ],
-        `sc_resource_${rid}_${r}`,
+      // Use SimCoTools API instead of SimCompanies
+      const data = await fetchStc(
+        [`/v1/realms/${r}/resources/${rid}`],
+        `stc_resource_${rid}_${r}`,
         TTL.RECIPE
       );
       const normalized = normalizeResource(data);
-      return normalized || data || null;
+      if (normalized) return normalized;
+      return data || null;
     } catch {
       // continue to fallback
     }
@@ -698,28 +706,41 @@ export const SimCoApi = {
     if (!Number.isFinite(rid)) return [];
 
     try {
-      const data = await fetchFirst(
-        [
-          `${SC_V3}/market/${r}/${rid}/`,
-          `${SC_V3}/en/exchange/${rid}/`,
-          `${SC_V2}/market/${r}/${rid}/`,
-        ],
-        `sc_exchange_${rid}_${r}`,
+      // Use SimCoTools API instead of SimCompanies
+      const data = await fetchStc(
+        [`/v1/realms/${r}/market/resources/${rid}`],
+        `stc_exchange_${rid}_${r}`,
         TTL.EXCHANGE
       );
+      // Transform SimCoTools market data to match expected listings format
+      const marketData = data?.market || data;
+      if (Array.isArray(marketData)) {
+        return marketData.map(row => ({
+          price: row.currentPrice || row.price || 0,
+          quality: row.quality || 0,
+          quantity: row.volume || row.quantity || 0,
+          ask: row.ask || row.price || 0
+        }));
+      }
       return normalizeListings(data);
     } catch {
       return [];
     }
   },
 
-  getCompany: async (id) => {
+  getCompany: async (id, realm = 0) => {
     const cid = toNum(id, NaN);
+    const r = normalizeRealm(realm);
     if (!Number.isFinite(cid)) return null;
     try {
-      return await fetchCached(`${SC_V2}/companies/${cid}/`, `sc_company_${cid}`, 5 * 60 * 1000);
+      // Use SimCoTools API instead of SimCompanies
+      return await fetchStc(
+        [`/v1/realms/${r}/companies/${cid}`],
+        `stc_company_${cid}_${r}`,
+        5 * 60 * 1000
+      );
     } catch {
-      return SimCoToolsApi.getCompany(cid, 0);
+      return SimCoToolsApi.getCompany(cid, r);
     }
   },
 
@@ -756,16 +777,14 @@ export const SimCoApi = {
     if (stcRows.length) return stcRows;
 
     try {
-      const data = await fetchFirst(
-        [
-          `${SC_V3}/en/encyclopedia/buildings/${r}/`,
-          `${SC_V2}/en/encyclopedia/buildings/`,
-        ],
-        `sc_buildings_${r}`,
+      // Use SimCoTools API instead of SimCompanies
+      const data = await fetchStc(
+        [`/v1/realms/${r}/buildings`],
+        `stc_buildings_${r}`,
         TTL.CATALOG,
         { silent: true }
       );
-      const rows = toArr(data).map(normalizeBuilding).filter(Boolean);
+      const rows = toArr(data?.buildings ?? data).map(normalizeBuilding).filter(Boolean);
       if (rows.length) return rows;
     } catch {
       // continue to static fallback
@@ -785,23 +804,24 @@ export const SimCoApi = {
     if (!Number.isFinite(bid)) return {};
 
     try {
-      const detail = await fetchFirst(
-        [
-          `${SC_V4}/${r}/buildings/${bid}/`,
-          `${SC_V3}/en/encyclopedia/buildings/${r}/${bid}/`,
-          `${SC_V2}/en/encyclopedia/buildings/${bid}/`,
-        ],
-        `sc_building_${bid}_${r}`,
+      // Use SimCoTools API instead of SimCompanies
+      const detail = await fetchStc(
+        [`/v1/realms/${r}/buildings`],
+        `stc_building_detail_${bid}_${r}`,
         TTL.CATALOG,
         { silent: true }
       );
+      
+      // Find the specific building in the list
+      const buildings = toArr(detail?.buildings ?? detail);
+      const building = buildings.find(b => toNum(b?.id) === bid);
+      
+      if (!building || typeof building !== 'object') return {};
 
-      if (!detail || typeof detail !== 'object') return {};
-
-      if (!Array.isArray(detail.upgradeCost)) {
-        const mats = toArr(detail.upgradeMaterials ?? detail.materials ?? detail.costs);
+      if (!Array.isArray(building.upgradeCost)) {
+        const mats = toArr(building.upgradeMaterials ?? building.materials ?? building.costs);
         if (mats.length) {
-          detail.upgradeCost = mats
+          building.upgradeCost = mats
             .map((m) => {
               const resourceId = toNum(m?.resource?.id ?? m?.resourceId ?? m?.kind ?? m?.id, NaN);
               const amount = toNum(m?.amount ?? m?.quantity ?? m?.count, 0);
@@ -817,7 +837,7 @@ export const SimCoApi = {
             .filter(Boolean);
         }
       }
-      return detail;
+      return building;
     } catch {
       return {};
     }

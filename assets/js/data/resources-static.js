@@ -68,7 +68,7 @@ export const RESOURCES_SNAPSHOT = [
 
 // NOTE: This list is from HAR captures and is INCOMPLETE.
 // The full list (~142 resources) should be fetched from:
-//   GET https://www.simcompanies.com/api/v3/market-ticker/0/
+//   GET https://api.simcotools.com/v1/realms/0/resources
 // and merged into this file periodically.
 
 export const KIND_TO_NAME = new Map(RESOURCES_SNAPSHOT.map(r => [r.kind, r.name]));
