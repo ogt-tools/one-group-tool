@@ -57,7 +57,23 @@ async function init() {
       r && typeof r === 'object' && typeof r.name === 'string' && Number.isFinite(Number(r.id ?? r.kind))
     ).map(r => ({ ...r, id: Number(r.id ?? r.kind), kind: Number(r.kind ?? r.id) }));
 
-    // FALLBACK: Static snapshot if proxy fails
+    // IF PROXY FAILS, TRY DIRECT SIMCOTOOLS API
+    if (!validResources.length) {
+      try {
+        const { SimCoToolsApi } = await import('../api.js');
+        const directResources = await SimCoToolsApi.getResources(realm);
+        if (directResources && directResources.length > 0) {
+          validResources = directResources.filter(r =>
+            r && typeof r === 'object' && typeof r.name === 'string' && Number.isFinite(Number(r.id ?? r.kind))
+          ).map(r => ({ ...r, id: Number(r.id ?? r.kind), kind: Number(r.kind ?? r.id) }));
+          console.log('Using direct SimCoTools API for resources');
+        }
+      } catch (directApiError) {
+        console.warn('Direct SimCoTools API for resources failed:', directApiError);
+      }
+    }
+
+    // FALLBACK: Static snapshot if both proxy and direct API fail
     if (!validResources.length) {
       validResources = (Array.isArray(RESOURCES_SNAPSHOT) ? RESOURCES_SNAPSHOT : []).filter(r =>
         r && typeof r === 'object' && typeof r.name === 'string' && Number.isFinite(Number(r.id ?? r.kind))
@@ -65,7 +81,7 @@ async function init() {
     }
 
     if (!validResources.length) {
-      window.showToast?.('Resource data unavailable. Check proxy settings.', 'error');
+      window.showToast?.('Resource data unavailable. Please refresh the page.', 'error');
       els.body.innerHTML = '<tr><td colspan="8" class="text-center text-red p-4">No resource data available.</td></tr>';
       return;
     }
@@ -118,22 +134,61 @@ async function loadAllPrices() {
     let priceMap = ProxyApi.buildPriceMap(ticker || []);
     let usedProxy = priceMap.size > 0;
 
+    // IF PROXY FAILS, TRY DIRECT SIMCOTOOLS API
     if (!priceMap.size) {
       usedProxy = false;
-      window.showToast?.('Proxy market data unavailable. Check proxy settings.', 'error');
+      try {
+        // Import and use SimCoToolsApi directly
+        const { SimCoToolsApi } = await import('../api.js');
+        const prices = await SimCoToolsApi.getAllPrices(realm);
+        if (prices && prices.length > 0) {
+          priceMap = SimCoToolsApi.buildPriceMap(prices);
+          console.log('Using direct SimCoTools API as fallback');
+        }
+      } catch (directApiError) {
+        console.warn('Direct SimCoTools API also failed:', directApiError);
+      }
     }
 
     // Update proxy status indicator
     if (els.proxyStatus) {
-      if (usedProxy && ProxyApi.isEnabled()) {
-        els.proxyStatus.innerHTML = '<i data-feather="wifi" style="width:14px;height:14px;"></i> <span class="text-green">Proxy</span>';
+      if (priceMap.size > 0) {
+        if (usedProxy && ProxyApi.isEnabled()) {
+          els.proxyStatus.innerHTML = '<i data-feather="wifi" style="width:14px;height:14px;"></i> <span class="text-green">Proxy</span>';
+        } else {
+          els.proxyStatus.innerHTML = '<i data-feather="wifi" style="width:14px;height:14px;"></i> <span class="text-blue">Direct API</span>';
+        }
       } else {
-        els.proxyStatus.innerHTML = '<i data-feather="wifi-off" style="width:14px;height:14px;"></i> <span class="text-orange">Direct API</span>';
+        els.proxyStatus.innerHTML = '<i data-feather="wifi-off" style="width:14px;height:14px;"></i> <span class="text-red">No Data</span>';
       }
     }
 
-    const vwaps = await ProxyApi.getVwaps(realm);
-    const vwapMap = ProxyApi.buildVwapMap(vwaps || []);
+    // Show appropriate message if no data available
+    if (!priceMap.size) {
+      window.showToast?.('Market data temporarily unavailable. Try again later.', 'warning');
+      els.updated.textContent = 'Updated: No data';
+      renderTable();
+      els.refresh.disabled = false;
+      if (window.feather) feather.replace();
+      return;
+    }
+
+    // GET VWAP DATA - TRY PROXY FIRST, THEN DIRECT API
+    let vwaps = await ProxyApi.getVwaps(realm);
+    let vwapMap = ProxyApi.buildVwapMap(vwaps || []);
+    
+    if (!vwapMap.size) {
+      try {
+        const { SimCoToolsApi } = await import('../api.js');
+        const vwapData = await SimCoToolsApi.getAllVwaps(realm);
+        if (vwapData && vwapData.length > 0) {
+          vwapMap = SimCoToolsApi.buildVwapMap(vwapData);
+          console.log('Using direct SimCoTools VWAP API as fallback');
+        }
+      } catch (vwapError) {
+        console.warn('VWAP data unavailable:', vwapError);
+      }
+    }
 
     const now = Date.now();
     for (const r of state.resources) {
